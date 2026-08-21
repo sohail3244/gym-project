@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum BusinessType {
+  GYM
+  YOGA_STUDIO
+  DANCE_STUDIO
+  PILATES_STUDIO
+  SWIMMING_ACADEMY
+  SPORTS_CENTER
+  MIXED_MARTIAL_ARTS_ACADEMY
+  BADMINTON_ACADEMY
+  PICKLEBALL_CLUB
+  ZUMBA_STUDIO
+  OTHER
+}
+
+model User {
+  id       String  @id @default(cuid())
+  name     String
+  username String  @unique
+  email    String? @unique
+
+  passwordHash      String
+  encryptedPassword String?
+
+  role   Role       @default(ADMIN)
+  status UserStatus @default(PENDING)
+
+  parentId String?
+
+  parent User? @relation("UserHierarchy", fields: [parentId], references: [id])
+  children User[] @relation("UserHierarchy")
+
+  business Business?
+
+  isFirstLogin Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model Business {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  businessName String
+  businessType BusinessType
+  mobileNumber String
+
+  email   String?
+  address String?
+  city    String?
+  state   String?
+  pincode String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessType])
+  @@index([mobileNumber])
+  @@map("businesses")
+}
