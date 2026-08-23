@@ -1,13 +1,5 @@
 import AdminService from "../services/admin.service.js";
 
-/*
-|--------------------------------------------------------------------------
-| ADMIN SELF REGISTRATION
-|--------------------------------------------------------------------------
-| Public API
-|--------------------------------------------------------------------------
-*/
-
 export const registerAdmin = async (req, res) => {
   try {
     const {
@@ -21,6 +13,7 @@ export const registerAdmin = async (req, res) => {
       city,
       state,
       pincode,
+      planId,
     } = req.body;
 
     if (
@@ -29,7 +22,8 @@ export const registerAdmin = async (req, res) => {
       !password ||
       !mobileNumber ||
       !businessName ||
-      !businessType
+      !businessType ||
+      !planId
     ) {
       return res.status(400).json({
         success: false,
@@ -56,12 +50,13 @@ export const registerAdmin = async (req, res) => {
       city,
       state,
       pincode,
+      planId,
     });
 
     return res.status(201).json({
       success: true,
       message:
-        "Registration successful. Your account is waiting for Super Admin approval.",
+        "Registration successful. Please complete your payment to activate your account.",
       data: result,
     });
   } catch (error) {
@@ -74,14 +69,74 @@ export const registerAdmin = async (req, res) => {
   }
 };
 
-/*
-|--------------------------------------------------------------------------
-| GET ALL ADMINS
-|--------------------------------------------------------------------------
-| Protected
-| SUPER_ADMIN only
-|--------------------------------------------------------------------------
-*/
+export const createAdmin = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      mobileNumber,
+      businessName,
+      businessType,
+      address,
+      city,
+      state,
+      pincode,
+      planId,
+      paymentRequired,
+    } = req.body;
+
+    if (
+      !name ||
+      !mobileNumber ||
+      !businessName ||
+      !businessType ||
+      !planId
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Name, mobile number, business name, business type and plan are required",
+      });
+    }
+
+    if (typeof paymentRequired !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "paymentRequired must be true or false",
+      });
+    }
+
+    const result = await AdminService.createAdmin({
+      superAdminId: req.user.id,
+      name,
+      email,
+      mobileNumber,
+      businessName,
+      businessType,
+      address,
+      city,
+      state,
+      pincode,
+      planId,
+      paymentRequired,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: paymentRequired
+        ? "Admin created successfully. Payment is required to activate the account."
+        : "Admin created successfully and activated.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Create Admin Error:", error);
+
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Failed to create admin",
+    });
+  }
+};
 
 export const getAllAdmins = async (req, res) => {
   try {
@@ -104,15 +159,6 @@ export const getAllAdmins = async (req, res) => {
     });
   }
 };
-
-/*
-|--------------------------------------------------------------------------
-| GET SINGLE ADMIN
-|--------------------------------------------------------------------------
-| Protected
-| SUPER_ADMIN only
-|--------------------------------------------------------------------------
-*/
 
 export const getAdminById = async (req, res) => {
   try {
@@ -145,4 +191,11 @@ export const getAdminById = async (req, res) => {
       message: error.message || "Admin not found",
     });
   }
+};
+
+export default {
+  registerAdmin,
+  createAdmin,
+  getAllAdmins,
+  getAdminById,
 };

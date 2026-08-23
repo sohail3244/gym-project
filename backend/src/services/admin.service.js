@@ -3,12 +3,6 @@ import crypto from "crypto";
 
 import prisma from "../prisma/prisma.js";
 
-/*
-|--------------------------------------------------------------------------
-| PASSWORD ENCRYPTION
-|--------------------------------------------------------------------------
-*/
-
 const getEncryptionKey = () => {
   const key = process.env.PASSWORD_ENCRYPTION_KEY;
 
@@ -26,12 +20,6 @@ const getEncryptionKey = () => {
 
   return Buffer.from(key, "hex");
 };
-
-/*
-|--------------------------------------------------------------------------
-| ENCRYPT PASSWORD
-|--------------------------------------------------------------------------
-*/
 
 const encryptPassword = (password) => {
   const key = getEncryptionKey();
@@ -60,12 +48,6 @@ const encryptPassword = (password) => {
     encrypted,
   ].join(":");
 };
-
-/*
-|--------------------------------------------------------------------------
-| DECRYPT PASSWORD
-|--------------------------------------------------------------------------
-*/
 
 const decryptPassword = (encryptedPassword) => {
   if (!encryptedPassword) {
@@ -114,12 +96,6 @@ const decryptPassword = (encryptedPassword) => {
   return decrypted;
 };
 
-/*
-|--------------------------------------------------------------------------
-| GENERATE UNIQUE USERNAME
-|--------------------------------------------------------------------------
-*/
-
 const generateUsername = async (
   prefix = "admin"
 ) => {
@@ -146,12 +122,6 @@ const generateUsername = async (
 
   return username;
 };
-
-/*
-|--------------------------------------------------------------------------
-| GENERATE RANDOM PASSWORD
-|--------------------------------------------------------------------------
-*/
 
 const generateRandomPassword = (
   length = 12
@@ -181,12 +151,6 @@ const generateRandomPassword = (
 
   return password;
 };
-
-/*
-|--------------------------------------------------------------------------
-| VERIFY SUPER ADMIN
-|--------------------------------------------------------------------------
-*/
 
 const verifySuperAdmin = async (
   superAdminId
@@ -225,11 +189,102 @@ const verifySuperAdmin = async (
   return superAdmin;
 };
 
-/*
-|--------------------------------------------------------------------------
-| ADMIN SELF REGISTRATION
-|--------------------------------------------------------------------------
-*/
+const getPlan = async (
+  tx,
+  planId
+) => {
+  if (!planId) {
+    throw new Error(
+      "Plan is required"
+    );
+  }
+
+  const plan =
+    await tx.plan.findUnique({
+      where: {
+        id: planId,
+      },
+    });
+
+  if (!plan) {
+    throw new Error(
+      "Plan not found"
+    );
+  }
+
+  if (
+    plan.status &&
+    plan.status !== "ACTIVE"
+  ) {
+    throw new Error(
+      "Selected plan is not active"
+    );
+  }
+
+  return plan;
+};
+
+const createPendingSubscription = async (
+  tx,
+  {
+    userId,
+    planId,
+    paymentRequired,
+  }
+) => {
+  const plan =
+    await getPlan(
+      tx,
+      planId
+    );
+
+  const subscription =
+    await tx.subscription.create({
+      data: {
+        userId,
+        planId,
+        status: paymentRequired
+          ? "PENDING"
+          : "ACTIVE",
+      },
+    });
+
+  return {
+    subscription,
+    plan,
+  };
+};
+
+const createPayment = async (
+  tx,
+  {
+    userId,
+    subscriptionId,
+    plan,
+    paymentRequired,
+  }
+) => {
+  if (!paymentRequired) {
+    return null;
+  }
+
+  const amount =
+    Number(
+      plan.price
+    );
+
+  const payment =
+    await tx.payment.create({
+      data: {
+        userId,
+        subscriptionId,
+        amount,
+        status: "PENDING",
+      },
+    });
+
+  return payment;
+};
 
 const registerAdmin = async ({
   name,
@@ -242,13 +297,8 @@ const registerAdmin = async ({
   city,
   state,
   pincode,
+  planId,
 }) => {
-  /*
-  |--------------------------------------------------------------------------
-  | CHECK EMAIL
-  |--------------------------------------------------------------------------
-  */
-
   if (email) {
     const existingEmail =
       await prisma.user.findUnique({
@@ -264,12 +314,6 @@ const registerAdmin = async ({
     }
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | CHECK MOBILE
-  |--------------------------------------------------------------------------
-  */
-
   const existingMobile =
     await prisma.business.findFirst({
       where: {
@@ -283,20 +327,22 @@ const registerAdmin = async ({
     );
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | GENERATE USERNAME
-  |--------------------------------------------------------------------------
-  */
+  const superAdmin =
+    await prisma.user.findFirst({
+      where: {
+        role: "SUPER_ADMIN",
+        status: "ACTIVE",
+      },
+    });
+
+  if (!superAdmin) {
+    throw new Error(
+      "Active Super Admin not found"
+    );
+  }
 
   const username =
     await generateUsername("admin");
-
-  /*
-  |--------------------------------------------------------------------------
-  | HASH PASSWORD
-  |--------------------------------------------------------------------------
-  */
 
   const passwordHash =
     await bcrypt.hash(
@@ -304,29 +350,17 @@ const registerAdmin = async ({
       12
     );
 
-  /*
-  |--------------------------------------------------------------------------
-  | ENCRYPT ORIGINAL PASSWORD
-  |--------------------------------------------------------------------------
-  */
-
   const encryptedPassword =
     encryptPassword(password);
-
-  /*
-  |--------------------------------------------------------------------------
-  | CREATE ADMIN + BUSINESS
-  |--------------------------------------------------------------------------
-  */
 
   const result =
     await prisma.$transaction(
       async (tx) => {
-        /*
-        |--------------------------------------------------------------------------
-        | CREATE ADMIN
-        |--------------------------------------------------------------------------
-        */
+        const plan =
+          await getPlan(
+            tx,
+            planId
+          );
 
         const admin =
           await tx.user.create({
@@ -335,94 +369,85 @@ const registerAdmin = async ({
               username,
               email:
                 email || null,
-
               passwordHash,
               encryptedPassword,
-
               role: "ADMIN",
-
-              // Self registered admin
-              // requires approval
               status: "PENDING",
-
-              // No Super Admin assigned
-              parentId: null,
-
+              parentId:
+                superAdmin.id,
               isFirstLogin: true,
             },
           });
-
-        /*
-        |--------------------------------------------------------------------------
-        | CREATE BUSINESS
-        |--------------------------------------------------------------------------
-        */
 
         const business =
           await tx.business.create({
             data: {
               userId: admin.id,
-
               businessName,
               businessType,
               mobileNumber,
-
               email:
                 email || null,
-
               address:
                 address || null,
-
               city:
                 city || null,
-
               state:
                 state || null,
-
               pincode:
                 pincode || null,
+            },
+          });
+
+        const subscription =
+          await tx.subscription.create({
+            data: {
+              userId: admin.id,
+              planId: plan.id,
+              status: "PENDING",
+            },
+          });
+
+        const payment =
+          await tx.payment.create({
+            data: {
+              userId: admin.id,
+              subscriptionId:
+                subscription.id,
+              amount:
+                Number(plan.price),
+              status: "PENDING",
             },
           });
 
         return {
           admin,
           business,
+          plan,
+          subscription,
+          payment,
         };
       }
     );
-
-  /*
-  |--------------------------------------------------------------------------
-  | RESPONSE
-  |--------------------------------------------------------------------------
-  */
 
   return {
     admin: {
       id:
         result.admin.id,
-
       name:
         result.admin.name,
-
       username:
         result.admin.username,
-
       email:
         result.admin.email,
-
       role:
         result.admin.role,
-
       status:
         result.admin.status,
-
       parentId:
         result.admin.parentId,
-
       isFirstLogin:
         result.admin.isFirstLogin,
-
       createdAt:
         result.admin.createdAt,
     },
@@ -430,42 +455,52 @@ const registerAdmin = async ({
     business: {
       id:
         result.business.id,
-
       businessName:
         result.business.businessName,
-
       businessType:
         result.business.businessType,
-
       mobileNumber:
         result.business.mobileNumber,
-
       email:
         result.business.email,
-
       address:
         result.business.address,
-
       city:
         result.business.city,
-
       state:
         result.business.state,
-
       pincode:
         result.business.pincode,
-
       createdAt:
         result.business.createdAt,
     },
+
+    plan: {
+      id:
+        result.plan.id,
+      name:
+        result.plan.name,
+      price:
+        result.plan.price,
+    },
+
+    subscription: {
+      id:
+        result.subscription.id,
+      status:
+        result.subscription.status,
+    },
+
+    payment: {
+      id:
+        result.payment.id,
+      amount:
+        result.payment.amount,
+      status:
+        result.payment.status,
+    },
   };
 };
-
-/*
-|--------------------------------------------------------------------------
-| CREATE ADMIN BY SUPER ADMIN
-|--------------------------------------------------------------------------
-*/
 
 const createAdmin = async ({
   superAdminId,
@@ -478,22 +513,21 @@ const createAdmin = async ({
   city,
   state,
   pincode,
+  planId,
+  paymentRequired,
 }) => {
-  /*
-  |--------------------------------------------------------------------------
-  | VERIFY SUPER ADMIN
-  |--------------------------------------------------------------------------
-  */
-
   await verifySuperAdmin(
     superAdminId
   );
 
-  /*
-  |--------------------------------------------------------------------------
-  | CHECK EMAIL
-  |--------------------------------------------------------------------------
-  */
+  if (
+    typeof paymentRequired !==
+    "boolean"
+  ) {
+    throw new Error(
+      "paymentRequired must be true or false"
+    );
+  }
 
   if (email) {
     const existingEmail =
@@ -510,12 +544,6 @@ const createAdmin = async ({
     }
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | CHECK MOBILE
-  |--------------------------------------------------------------------------
-  */
-
   const existingMobile =
     await prisma.business.findFirst({
       where: {
@@ -529,29 +557,11 @@ const createAdmin = async ({
     );
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | GENERATE USERNAME
-  |--------------------------------------------------------------------------
-  */
-
   const username =
     await generateUsername("admin");
 
-  /*
-  |--------------------------------------------------------------------------
-  | GENERATE RANDOM PASSWORD
-  |--------------------------------------------------------------------------
-  */
-
   const adminPassword =
     generateRandomPassword(12);
-
-  /*
-  |--------------------------------------------------------------------------
-  | HASH PASSWORD
-  |--------------------------------------------------------------------------
-  */
 
   const passwordHash =
     await bcrypt.hash(
@@ -559,149 +569,113 @@ const createAdmin = async ({
       12
     );
 
-  /*
-  |--------------------------------------------------------------------------
-  | ENCRYPT ORIGINAL PASSWORD
-  |--------------------------------------------------------------------------
-  */
-
   const encryptedPassword =
     encryptPassword(
       adminPassword
     );
 
-  /*
-  |--------------------------------------------------------------------------
-  | CREATE ADMIN + BUSINESS
-  |--------------------------------------------------------------------------
-  */
-
   const result =
     await prisma.$transaction(
       async (tx) => {
-        /*
-        |--------------------------------------------------------------------------
-        | CREATE ADMIN
-        |--------------------------------------------------------------------------
-        */
+        const plan =
+          await getPlan(
+            tx,
+            planId
+          );
 
         const admin =
           await tx.user.create({
             data: {
               name,
               username,
-
               email:
                 email || null,
-
               passwordHash,
               encryptedPassword,
-
               role: "ADMIN",
-
-              // Super Admin created
-              // admin is active
-              status: "ACTIVE",
-
-              // Assign Super Admin
+              status:
+                paymentRequired
+                  ? "PENDING"
+                  : "ACTIVE",
               parentId:
                 superAdminId,
-
               isFirstLogin: true,
             },
           });
-
-        /*
-        |--------------------------------------------------------------------------
-        | CREATE BUSINESS
-        |--------------------------------------------------------------------------
-        */
 
         const business =
           await tx.business.create({
             data: {
               userId: admin.id,
-
               businessName,
               businessType,
               mobileNumber,
-
               email:
                 email || null,
-
               address:
                 address || null,
-
               city:
                 city || null,
-
               state:
                 state || null,
-
               pincode:
                 pincode || null,
             },
           });
 
-        /*
-        |--------------------------------------------------------------------------
-        | DEBUG
-        |--------------------------------------------------------------------------
-        */
+        const subscription =
+          await tx.subscription.create({
+            data: {
+              userId: admin.id,
+              planId: plan.id,
+              status:
+                paymentRequired
+                  ? "PENDING"
+                  : "ACTIVE",
+            },
+          });
 
-        console.log(
-          "Admin Created:",
-          {
-            id: admin.id,
-            username:
-              admin.username,
-
-            encryptedPassword:
-              admin.encryptedPassword
-                ? "SAVED"
-                : "NULL",
-          }
-        );
+        const payment =
+          await createPayment(
+            tx,
+            {
+              userId:
+                admin.id,
+              subscriptionId:
+                subscription.id,
+              plan,
+              paymentRequired,
+            }
+          );
 
         return {
           admin,
           business,
+          plan,
+          subscription,
+          payment,
         };
       }
     );
-
-  /*
-  |--------------------------------------------------------------------------
-  | RESPONSE
-  |--------------------------------------------------------------------------
-  */
 
   return {
     admin: {
       id:
         result.admin.id,
-
       name:
         result.admin.name,
-
       username:
         result.admin.username,
-
       email:
         result.admin.email,
-
       role:
         result.admin.role,
-
       status:
         result.admin.status,
-
       parentId:
         result.admin.parentId,
-
       isFirstLogin:
         result.admin.isFirstLogin,
-
       createdAt:
         result.admin.createdAt,
     },
@@ -709,34 +683,52 @@ const createAdmin = async ({
     business: {
       id:
         result.business.id,
-
       businessName:
         result.business.businessName,
-
       businessType:
         result.business.businessType,
-
       mobileNumber:
         result.business.mobileNumber,
-
       email:
         result.business.email,
-
       address:
         result.business.address,
-
       city:
         result.business.city,
-
       state:
         result.business.state,
-
       pincode:
         result.business.pincode,
-
       createdAt:
         result.business.createdAt,
     },
+
+    plan: {
+      id:
+        result.plan.id,
+      name:
+        result.plan.name,
+      price:
+        result.plan.price,
+    },
+
+    subscription: {
+      id:
+        result.subscription.id,
+      status:
+        result.subscription.status,
+    },
+
+    payment: result.payment
+      ? {
+          id:
+            result.payment.id,
+          amount:
+            result.payment.amount,
+          status:
+            result.payment.status,
+        }
+      : null,
 
     credentials: {
       username,
@@ -745,17 +737,13 @@ const createAdmin = async ({
   };
 };
 
-/*
-|--------------------------------------------------------------------------
-| GET ALL ADMINS
-|--------------------------------------------------------------------------
-*/
-
 const getAllAdmins = async (
   superAdminId,
   query = {}
 ) => {
-  await verifySuperAdmin(superAdminId);
+  await verifySuperAdmin(
+    superAdminId
+  );
 
   const page = Math.max(
     parseInt(query.page, 10) || 1,
@@ -770,9 +758,11 @@ const getAllAdmins = async (
     100
   );
 
-  const skip = (page - 1) * limit;
+  const skip =
+    (page - 1) * limit;
 
-  const search = query.search?.trim();
+  const search =
+    query.search?.trim();
 
   const where = {
     role: "ADMIN",
@@ -825,21 +815,19 @@ const getAllAdmins = async (
       "SUSPENDED",
     ].includes(query.status)
   ) {
-    where.status = query.status;
+    where.status =
+      query.status;
   }
 
   const [admins, total] =
     await prisma.$transaction([
       prisma.user.findMany({
         where,
-
         skip,
         take: limit,
-
         orderBy: {
           createdAt: "desc",
         },
-
         select: {
           id: true,
           name: true,
@@ -867,6 +855,24 @@ const getAllAdmins = async (
               updatedAt: true,
             },
           },
+
+          subscriptions: {
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 1,
+            select: {
+              id: true,
+              status: true,
+              plan: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true,
+                },
+              },
+            },
+          },
         },
       }),
 
@@ -875,9 +881,10 @@ const getAllAdmins = async (
       }),
     ]);
 
-  const totalPages = Math.ceil(
-    total / limit
-  );
+  const totalPages =
+    Math.ceil(
+      total / limit
+    );
 
   return {
     admins,
@@ -887,23 +894,21 @@ const getAllAdmins = async (
       limit,
       total,
       totalPages,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1,
+      hasNextPage:
+        page < totalPages,
+      hasPreviousPage:
+        page > 1,
     },
   };
 };
-
-/*
-|--------------------------------------------------------------------------
-| GET SINGLE ADMIN
-|--------------------------------------------------------------------------
-*/
 
 const getAdminById = async (
   superAdminId,
   adminId
 ) => {
-  await verifySuperAdmin(superAdminId);
+  await verifySuperAdmin(
+    superAdminId
+  );
 
   const admin =
     await prisma.user.findFirst({
@@ -941,19 +946,57 @@ const getAdminById = async (
             updatedAt: true,
           },
         },
+
+        subscriptions: {
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 1,
+          select: {
+            id: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            autoRenew: true,
+
+            plan: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+              },
+            },
+          },
+        },
+
+        payments: {
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 10,
+          select: {
+            id: true,
+            amount: true,
+            status: true,
+            createdAt: true,
+          },
+        },
       },
     });
 
   if (!admin) {
-    throw new Error("Admin not found");
+    throw new Error(
+      "Admin not found"
+    );
   }
 
   let password = null;
 
   if (admin.encryptedPassword) {
-    password = decryptPassword(
-      admin.encryptedPassword
-    );
+    password =
+      decryptPassword(
+        admin.encryptedPassword
+      );
   }
 
   const {
@@ -966,12 +1009,6 @@ const getAdminById = async (
     password,
   };
 };
-
-/*
-|--------------------------------------------------------------------------
-| EXPORT
-|--------------------------------------------------------------------------
-*/
 
 export default {
   registerAdmin,

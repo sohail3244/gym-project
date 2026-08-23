@@ -33,6 +33,39 @@ enum BusinessType {
   OTHER
 }
 
+enum PlanStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  SUSPENDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  ONLINE
+  CASH
+  BANK_TRANSFER
+  UPI
+  CARD
+}
+
 model User {
   id       String  @id @default(cuid())
   name     String
@@ -47,10 +80,13 @@ model User {
 
   parentId String?
 
-  parent User? @relation("UserHierarchy", fields: [parentId], references: [id])
+  parent   User?  @relation("UserHierarchy", fields: [parentId], references: [id])
   children User[] @relation("UserHierarchy")
 
   business Business?
+
+  subscriptions Subscription[] @relation("UserSubscriptions")
+  payments      Payment[]      @relation("UserPayments")
 
   isFirstLogin Boolean @default(true)
 
@@ -85,4 +121,97 @@ model Business {
   @@index([businessType])
   @@index([mobileNumber])
   @@map("businesses")
+}
+
+model Plan {
+  id String @id @default(cuid())
+
+  name        String
+  description String?
+
+  price Decimal @db.Decimal(10, 2)
+
+  billingInterval BillingInterval
+  durationInDays  Int
+
+  maxMembers    Int?
+  maxStaff      Int?
+  maxBusinesses Int?
+
+  features Json?
+
+  status PlanStatus @default(ACTIVE)
+
+  subscriptions Subscription[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("plans")
+}
+
+model Subscription {
+  id String @id @default(cuid())
+
+  userId String
+  planId String
+
+  paymentRequired Boolean @default(true)
+
+  startDate DateTime?
+  endDate   DateTime?
+
+  status SubscriptionStatus @default(PENDING)
+
+  autoRenew Boolean @default(false)
+
+  plan Plan @relation(fields: [planId], references: [id])
+
+  user User @relation("UserSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
+
+  payments Payment[] @relation("SubscriptionPayments")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([planId])
+  @@index([status])
+  @@index([endDate])
+  @@map("subscriptions")
+}
+
+model Payment {
+  id String @id @default(cuid())
+
+  userId         String
+  subscriptionId String
+
+  amount   Decimal @db.Decimal(10, 2)
+  currency String  @default("INR")
+
+  paymentMethod PaymentMethod?
+  status        PaymentStatus  @default(PENDING)
+
+  transactionId String? @unique
+
+  gatewayOrderId   String?
+  gatewayPaymentId String?
+  gatewaySignature String?
+
+  paidAt DateTime?
+
+  subscription Subscription @relation("SubscriptionPayments", fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  user User @relation("UserPayments", fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("payments")
 }
