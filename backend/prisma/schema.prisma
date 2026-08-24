@@ -66,6 +66,25 @@ enum PaymentMethod {
   CARD
 }
 
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  SUSPENDED
+}
+
 model User {
   id       String  @id @default(cuid())
   name     String
@@ -87,6 +106,16 @@ model User {
 
   subscriptions Subscription[] @relation("UserSubscriptions")
   payments      Payment[]      @relation("UserPayments")
+
+  members Member[] @relation("AdminMembers")
+
+  staff Staff[] @relation("AdminStaff")
+
+  staffAttendances StaffAttendance[] @relation("AdminStaffAttendance")
+
+  membershipPlans MembershipPlan[] @relation("AdminMembershipPlans")
+
+  memberPayments MemberPayment[] @relation("AdminMemberPayments")
 
   isFirstLogin Boolean @default(true)
 
@@ -214,4 +243,227 @@ model Payment {
   @@index([status])
   @@index([createdAt])
   @@map("payments")
+}
+
+model Member {
+  id String @id @default(cuid())
+
+  adminId String
+
+  name         String
+  mobileNumber String
+  email        String?
+
+  gender       Gender?
+  dateOfBirth  DateTime?
+
+  address String?
+  city    String?
+  state   String?
+  pincode String?
+
+  status MemberStatus @default(ACTIVE)
+
+  admin User @relation("AdminMembers", fields: [adminId], references: [id], onDelete: Cascade)
+
+  memberships Membership[] @relation("MemberMemberships")
+
+  payments MemberPayment[] @relation("MemberPayments")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([adminId])
+  @@index([status])
+  @@index([mobileNumber])
+  @@index([email])
+  @@map("members")
+}
+
+model MembershipPlan {
+  id String @id @default(cuid())
+
+  adminId String
+
+  name        String
+  description String?
+
+  price Decimal @db.Decimal(10, 2)
+
+  durationInDays Int
+
+  features Json?
+
+  status PlanStatus @default(ACTIVE)
+
+  admin User @relation("AdminMembershipPlans", fields: [adminId], references: [id], onDelete: Cascade)
+
+  memberships Membership[] @relation("MembershipPlanMemberships")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([adminId])
+  @@index([status])
+  @@map("membership_plans")
+}
+
+model Membership {
+  id String @id @default(cuid())
+
+  memberId         String
+  membershipPlanId String
+
+  membershipName String
+  amount         Decimal @db.Decimal(10, 2)
+
+  startDate DateTime
+  endDate   DateTime
+
+  status MembershipStatus @default(ACTIVE)
+
+  member Member @relation("MemberMemberships", fields: [memberId], references: [id], onDelete: Cascade)
+
+  membershipPlan MembershipPlan @relation("MembershipPlanMemberships", fields: [membershipPlanId], references: [id], onDelete: Restrict)
+
+  payments MemberPayment[] @relation("MembershipPayments")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId])
+  @@index([membershipPlanId])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+  @@map("memberships")
+}
+
+model MemberPayment {
+  id String @id @default(cuid())
+
+  adminId String
+  memberId String
+
+  membershipId String?
+
+  amount Decimal @db.Decimal(10, 2)
+
+  currency String @default("INR")
+
+  paymentMethod PaymentMethod?
+
+  status PaymentStatus @default(SUCCESS)
+
+  transactionId String? @unique
+
+  notes String?
+
+  paidAt DateTime?
+
+  admin User @relation("AdminMemberPayments", fields: [adminId], references: [id], onDelete: Cascade)
+
+  member Member @relation("MemberPayments", fields: [memberId], references: [id], onDelete: Cascade)
+
+  membership Membership? @relation("MembershipPayments", fields: [membershipId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([adminId])
+  @@index([memberId])
+  @@index([membershipId])
+  @@index([status])
+  @@index([paymentMethod])
+  @@index([createdAt])
+  @@map("member_payments")
+}
+
+enum StaffType {
+  TRAINER
+  RECEPTIONIST
+  CLEANER
+  MANAGER
+  ACCOUNTANT
+  SECURITY
+  OTHER
+}
+
+enum StaffStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model Staff {
+  id String @id @default(cuid())
+
+  adminId String
+
+  name         String
+  username     String? @unique
+  email        String? @unique
+  mobileNumber String
+
+  passwordHash String?
+
+  staffType   StaffType
+  designation String?
+
+  address String?
+  city    String?
+  state   String?
+  pincode String?
+
+  status StaffStatus @default(ACTIVE)
+
+  attendances StaffAttendance[] @relation("StaffAttendance")
+
+  admin User @relation("AdminStaff", fields: [adminId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([adminId])
+  @@index([status])
+  @@index([staffType])
+  @@index([mobileNumber])
+  @@map("staff")
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  LATE
+  LEAVE
+}
+
+model StaffAttendance {
+  id String @id @default(cuid())
+
+  adminId String
+  staffId String
+
+  attendanceDate DateTime
+
+  checkIn  DateTime?
+  checkOut DateTime?
+
+  status AttendanceStatus @default(PRESENT)
+
+  notes String?
+
+  admin User @relation("AdminStaffAttendance", fields: [adminId], references: [id], onDelete: Cascade)
+
+  staff Staff @relation("StaffAttendance", fields: [staffId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([staffId, attendanceDate])
+  @@index([adminId])
+  @@index([staffId])
+  @@index([attendanceDate])
+  @@index([status])
+  @@map("staff_attendance")
 }
