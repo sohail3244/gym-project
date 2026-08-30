@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { X, ShieldPlus, UserPlus } from "lucide-react";
+
 import AdminForm from "../form/AdminForm";
 
 export default function AdminModal({
@@ -12,20 +13,18 @@ export default function AdminModal({
 }) {
   const modalRef = useRef(null);
 
-  // Close on Escape key & manage body scroll lock
+  // Escape key + body scroll lock
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
         onClose();
       }
     };
 
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      window.addEventListener("keydown", handleKeyDown);
-    } else {
-      document.body.style.overflow = "unset";
-    }
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
       document.body.style.overflow = "unset";
@@ -33,64 +32,153 @@ export default function AdminModal({
     };
   }, [isOpen, onClose]);
 
-  // Click outside to close handler
-  const handleBackdropClick = (e) => {
-    if (modalRef.current && !modalRef.current.contains(e.target)) {
+  // Click outside modal
+  const handleBackdropClick = (event) => {
+    if (
+      modalRef.current &&
+      !modalRef.current.contains(event.target)
+    ) {
       onClose();
     }
   };
 
   if (!isOpen) return null;
 
+  const isRegisterMode = mode === "register";
+
   return (
     <div
       onClick={handleBackdropClick}
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm animate-in fade-in duration-200 sm:p-6"
+      className="
+        fixed
+        inset-0
+        z-50
+        flex
+        items-center
+        justify-center
+        bg-black/40
+        p-4
+        backdrop-blur-md
+      "
     >
       <div
         ref={modalRef}
-        className="relative my-8 flex w-full max-w-3xl flex-col rounded-3xl border border-black/10 bg-secondary p-6 shadow-2xl shadow-black/20 animate-in zoom-in-95 duration-200 sm:p-8"
         role="dialog"
         aria-modal="true"
+        aria-labelledby="admin-modal-title"
+        className="
+          relative
+          flex
+          max-h-[90vh]
+          w-full
+          max-w-3xl
+          flex-col
+          overflow-hidden
+          rounded-2xl
+          border
+          border-border
+          bg-background
+          shadow-2xl
+          shadow-black/20
+        "
       >
-        {/* Modal Top Header */}
-        <div className="flex items-start justify-between border-b border-black/10 pb-5">
+        {/* =========================
+            HEADER
+        ========================== */}
+        <div
+          className="
+            flex
+            shrink-0
+            items-start
+            justify-between
+            border-b
+            border-border
+            px-6
+            py-4
+          "
+        >
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-white shadow-sm shadow-primary/20">
-              {mode === "register" ? (
+            {/* Icon */}
+            <div
+              className="
+                flex
+                h-10
+                w-10
+                shrink-0
+                items-center
+                justify-center
+                rounded-xl
+                bg-primary
+                text-primary-foreground
+                shadow-sm
+              "
+            >
+              {isRegisterMode ? (
                 <UserPlus size={20} />
               ) : (
                 <ShieldPlus size={20} />
               )}
             </div>
+
+            {/* Title */}
             <div>
-              <h2 className="text-lg font-bold text-black sm:text-xl">
-                {mode === "register" ? "Register Admin Account" : "Add New Administrator"}
+              <h2
+                id="admin-modal-title"
+                className="
+                  text-base
+                  font-bold
+                  text-foreground
+                  sm:text-lg
+                "
+              >
+                {isRegisterMode
+                  ? "Register Admin Account"
+                  : "Add New Administrator"}
               </h2>
-              <p className="text-xs text-black/60">
-                Configure credentials and business permissions.
+
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {isRegisterMode
+                  ? "Create your admin account and business profile."
+                  : "Create an administrator and assign a subscription plan."}
               </p>
             </div>
           </div>
 
+          {/* Close */}
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-black/50 transition hover:bg-black/5 hover:text-black active:scale-95"
             aria-label="Close modal"
+            className="
+              flex
+              h-8
+              w-8
+              shrink-0
+              items-center
+              justify-center
+              rounded-lg
+              text-muted-foreground
+              transition
+              hover:bg-secondary
+              hover:text-foreground
+              active:scale-95
+            "
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
-        {/* Modal Scrollable Body */}
-        <div className="mt-6 max-h-[calc(85vh-12rem)] overflow-y-auto pr-1">
+        {/* =========================
+            FORM
+        ========================== */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
           <AdminForm
             mode={mode}
             onSuccess={() => {
-              if (onSuccess) onSuccess();
+              onSuccess?.();
               onClose();
             }}
+            onClose={onClose}
           />
         </div>
       </div>

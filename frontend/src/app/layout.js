@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import QueryProvider from "@/providers/QueryProvider";
+import ThemeProviders from "@/providers/Theme";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,7 +24,7 @@ export default function RootLayout({ children }) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col"><QueryProvider>{children}</QueryProvider></body>
+      <body className="min-h-full flex flex-col"><QueryProvider><ThemeProviders>{children}</ThemeProviders></QueryProvider></body>
     </html>
   );
 }

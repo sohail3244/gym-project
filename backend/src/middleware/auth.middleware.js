@@ -16,6 +16,9 @@ const authMiddleware = (req, res, next) => {
         "JWT_ACCESS_SECRET is missing"
       );
 
+      console.log("JWT DECODED:", decoded);
+console.log("JWT ROLE:", decoded.role);
+
       return res.status(500).json({
         success: false,
         message: "Authentication configuration error",

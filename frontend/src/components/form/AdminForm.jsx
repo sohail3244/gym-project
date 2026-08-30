@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, forwardRef } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useRouter } from "next/navigation";
+
 import {
   User,
   Mail,
@@ -15,30 +15,79 @@ import {
   ArrowRight,
   AlertCircle,
   ShieldAlert,
+  CreditCard,
 } from "lucide-react";
 
 import Button from "@/components/ui/Button";
+import InputField from "@/components/ui/InputField";
 import { useRegisterAdmin } from "@/lib/hooks/useAdmin";
 
 const businessTypes = [
-  { value: "GYM", label: "Gym" },
-  { value: "YOGA_STUDIO", label: "Yoga Studio" },
-  { value: "DANCE_STUDIO", label: "Dance Studio" },
-  { value: "PILATES_STUDIO", label: "Pilates Studio" },
-  { value: "SWIMMING_ACADEMY", label: "Swimming Academy" },
-  { value: "SPORTS_CENTER", label: "Sports Center" },
+  {
+    value: "GYM",
+    label: "Gym",
+  },
+  {
+    value: "YOGA_STUDIO",
+    label: "Yoga Studio",
+  },
+  {
+    value: "DANCE_STUDIO",
+    label: "Dance Studio",
+  },
+  {
+    value: "PILATES_STUDIO",
+    label: "Pilates Studio",
+  },
+  {
+    value: "SWIMMING_ACADEMY",
+    label: "Swimming Academy",
+  },
+  {
+    value: "SPORTS_CENTER",
+    label: "Sports Center",
+  },
   {
     value: "MIXED_MARTIAL_ARTS_ACADEMY",
     label: "Mixed Martial Arts Academy",
   },
-  { value: "BADMINTON_ACADEMY", label: "Badminton Academy" },
-  { value: "PICKLEBALL_CLUB", label: "Pickleball Club" },
-  { value: "ZUMBA_STUDIO", label: "Zumba Studio" },
-  { value: "OTHER", label: "Other" },
+  {
+    value: "BADMINTON_ACADEMY",
+    label: "Badminton Academy",
+  },
+  {
+    value: "PICKLEBALL_CLUB",
+    label: "Pickleball Club",
+  },
+  {
+    value: "ZUMBA_STUDIO",
+    label: "Zumba Studio",
+  },
+  {
+    value: "OTHER",
+    label: "Other",
+  },
 ];
 
-export default function AdminForm() {
-  const router = useRouter();
+/*
+|--------------------------------------------------------------------------
+| IMPORTANT
+|--------------------------------------------------------------------------
+| Backend registerAdmin API planId ko REQUIRED rakhta hai.
+|
+| Isliye yahan plans ko API se load karna better hai.
+|
+| Agar tumhare paas already usePlans() hook hai to usko yahan use karo.
+| Neeche temporary example ke liye plans prop rakha gaya hai.
+|--------------------------------------------------------------------------
+*/
+
+export default function AdminForm({
+  mode = "create",
+  onSuccess,
+  onClose,
+  plans = [],
+}) {
   const [showPassword, setShowPassword] = useState(false);
 
   const registerMutation = useRegisterAdmin();
@@ -59,43 +108,49 @@ export default function AdminForm() {
       city: "",
       state: "",
       pincode: "",
+      planId: "",
+      paymentRequired: false,
     },
   });
 
   const onSubmit = async (data) => {
-    try {
-      await registerMutation.mutateAsync(data);
+  try {
+    const payload = {
+      ...data,
+      paymentRequired: false,
+    };
 
-    } catch (error) {
-      console.error("Admin Registration Error:", error);
+    await registerMutation.mutateAsync(payload);
+
+    if (onSuccess) {
+      onSuccess();
     }
-  };
+  } catch (error) {
+    console.error("Admin Registration Error:", error);
+  }
+};
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="rounded-2xl border border-black/10 bg-white/60 p-6 shadow-sm">
-        <h2 className="text-xl font-bold tracking-tight text-black sm:text-2xl">
-          Create Admin Account
-        </h2>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      {/* =========================================================
+          ADMIN PROFILE & SECURITY
+      ========================================================= */}
 
-        <p className="mt-1 text-xs text-black/60 sm:text-sm">
-          Register your administrator account and business information.
-        </p>
-      </div>
-
-      <div className="space-y-5 rounded-2xl border border-black/10 bg-white/60 p-6 shadow-sm">
-        <div className="flex items-center gap-2 border-b border-black/10 pb-3">
+      <div className="space-y-5 rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex items-center gap-2 border-b border-border pb-3">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <User size={16} />
           </div>
 
-          <h3 className="text-xs font-bold uppercase tracking-wider text-black">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
             Admin Profile & Security
           </h3>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <FormInput
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {/* Full Name */}
+
+          <InputField
             label="Full Name"
             placeholder="Rahul Sharma"
             icon={User}
@@ -109,7 +164,9 @@ export default function AdminForm() {
             })}
           />
 
-          <FormInput
+          {/* Email */}
+
+          <InputField
             label="Email Address"
             type="email"
             placeholder="rahul@example.com"
@@ -124,8 +181,10 @@ export default function AdminForm() {
             })}
           />
 
+          {/* Password */}
+
           <div className="relative">
-            <FormInput
+            <InputField
               label="Password"
               type={showPassword ? "text" : "password"}
               placeholder="••••••••"
@@ -143,8 +202,26 @@ export default function AdminForm() {
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-3.5 top-9.5 text-black/40 transition hover:text-black"
+              className="
+                absolute
+                right-3
+                top-8.5
+                flex
+                h-7
+                w-7
+                items-center
+                justify-center
+                rounded-md
+                text-muted-foreground
+                transition
+                hover:bg-secondary
+                hover:text-foreground
+                active:scale-95
+              "
               tabIndex={-1}
+              aria-label={
+                showPassword ? "Hide password" : "Show password"
+              }
             >
               {showPassword ? (
                 <EyeOff size={16} />
@@ -154,9 +231,12 @@ export default function AdminForm() {
             </button>
           </div>
 
-          <FormInput
+          {/* Mobile */}
+
+          <InputField
             label="Mobile Number"
             type="tel"
+            inputMode="numeric"
             placeholder="9876543210"
             icon={Phone}
             error={errors.mobileNumber?.message}
@@ -169,21 +249,25 @@ export default function AdminForm() {
             })}
           />
         </div>
-      </div>
 
-      <div className="space-y-5 rounded-2xl border border-black/10 bg-white/60 p-6 shadow-sm">
-        <div className="flex items-center gap-2 border-b border-black/10 pb-3">
+        {/* =========================================================
+            BUSINESS DETAILS
+        ========================================================= */}
+
+        <div className="flex items-center gap-2 border-b border-border pb-3 pt-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Building2 size={16} />
           </div>
 
-          <h3 className="text-xs font-bold uppercase tracking-wider text-black">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
             Business Details
           </h3>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <FormInput
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {/* Business Name */}
+
+          <InputField
             label="Business / Gym Name"
             placeholder="Apex Fitness & Performance"
             icon={Building2}
@@ -192,25 +276,43 @@ export default function AdminForm() {
               required: "Business name is required",
               minLength: {
                 value: 2,
-                message: "Business name must be at least 2 characters",
+                message:
+                  "Business name must be at least 2 characters",
               },
             })}
           />
 
-          <div>
-            <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-black/70">
-              Business Type <span className="text-rose-500">*</span>
+          {/* Business Type */}
+
+          <div className="w-full">
+            <label className="mb-1.5 block text-sm font-medium text-foreground">
+              Business Type
+              <span className="ml-1 text-destructive">*</span>
             </label>
 
             <select
               {...register("businessType", {
                 required: "Please select a business type",
               })}
-              className={`w-full rounded-xl border bg-white px-4 py-3 text-xs text-black outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10 ${
-                errors.businessType
-                  ? "border-rose-500"
-                  : "border-black/10"
-              }`}
+              className={`
+                min-h-10
+                w-full
+                rounded-xl
+                border
+                bg-background
+                px-3
+                py-2
+                text-sm
+                text-foreground
+                outline-none
+                transition-all
+                duration-200
+                ${
+                  errors.businessType
+                    ? "border-destructive focus:border-destructive focus:ring-2 focus:ring-destructive/10"
+                    : "border-border focus:border-primary focus:ring-2 focus:ring-primary/10"
+                }
+              `}
             >
               <option value="">Choose business type...</option>
 
@@ -222,51 +324,111 @@ export default function AdminForm() {
             </select>
 
             {errors.businessType && (
-              <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-rose-500">
+              <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-destructive">
                 <AlertCircle size={12} />
                 {errors.businessType.message}
               </p>
             )}
           </div>
         </div>
-      </div>
 
-      <div className="space-y-5 rounded-2xl border border-black/10 bg-white/60 p-6 shadow-sm">
-        <div className="flex items-center gap-2 border-b border-black/10 pb-3">
+        {/* =========================================================
+            PLAN
+        ========================================================= */}
+
+        <div className="flex items-center gap-2 border-b border-border pb-3 pt-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <CreditCard size={16} />
+          </div>
+
+          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+            Subscription Plan
+          </h3>
+        </div>
+
+        <div className="w-full">
+          <label className="mb-1.5 block text-sm font-medium text-foreground">
+            Select Plan
+            <span className="ml-1 text-destructive">*</span>
+          </label>
+
+          <select
+  {...register("paymentRequired", {
+    
+    setValueAs: (value) => value === "true",
+  })}
+  defaultValue="false"
+>
+  <option value="false">No Payment Required</option>
+  <option value="true">Payment Required</option>
+</select>
+
+          {errors.planId && (
+            <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-destructive">
+              <AlertCircle size={12} />
+              {errors.planId.message}
+            </p>
+          )}
+
+          {plans.length === 0 && (
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              No subscription plans available.
+            </p>
+          )}
+        </div>
+
+        {/* =========================================================
+            LOCATION & ADDRESS
+        ========================================================= */}
+
+        <div className="flex items-center gap-2 border-b border-border pb-3 pt-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <MapPin size={16} />
           </div>
 
-          <h3 className="text-xs font-bold uppercase tracking-wider text-black">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
             Location & Address
           </h3>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {/* Street Address */}
+
           <div className="md:col-span-3">
-            <FormInput
+            <InputField
               label="Street Address"
               placeholder="Plot No. 42, Kings Avenue, Sector 5"
               icon={MapPin}
+              error={errors.address?.message}
               {...register("address")}
             />
           </div>
 
-          <FormInput
+          {/* City */}
+
+          <InputField
             label="City"
-            placeholder="Jaipur"
+            placeholder="Mumbai"
+            error={errors.city?.message}
             {...register("city")}
           />
 
-          <FormInput
+          {/* State */}
+
+          <InputField
             label="State / Province"
-            placeholder="Rajasthan"
+            placeholder="Maharashtra"
+            error={errors.state?.message}
             {...register("state")}
           />
 
-          <FormInput
+          {/* PIN */}
+
+          <InputField
             label="Postal Code (PIN)"
-            placeholder="302001"
+            type="text"
+            inputMode="numeric"
+            placeholder="400053"
             error={errors.pincode?.message}
             {...register("pincode", {
               pattern: {
@@ -276,14 +438,62 @@ export default function AdminForm() {
             })}
           />
         </div>
+
+        {/* =========================================================
+            ACTION BUTTONS
+        ========================================================= */}
+
+        <div className="flex items-center justify-end gap-3 pt-1">
+          <Button
+            variant="outline"
+            type="button"
+            onClick={onClose}
+            className="
+              border-border
+              bg-background
+              text-foreground
+              hover:bg-secondary
+            "
+          >
+            Cancel
+          </Button>
+
+          <Button
+            type="submit"
+            disabled={
+              registerMutation.isPending || plans.length === 0
+            }
+            isLoading={registerMutation.isPending}
+            loadingText="Registering..."
+            icon={ArrowRight}
+            iconPosition="right"
+          >
+            Complete Registration
+          </Button>
+        </div>
       </div>
 
+      {/* =========================================================
+          API ERROR
+      ========================================================= */}
+
       {registerMutation.isError && (
-        <div className="flex items-center gap-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-xs font-medium text-rose-700">
-          <ShieldAlert
-            size={18}
-            className="shrink-0 text-rose-600"
-          />
+        <div
+          className="
+            flex
+            items-start
+            gap-3
+            rounded-2xl
+            border
+            border-destructive/20
+            bg-destructive/10
+            p-4
+            text-sm
+            font-medium
+            text-destructive
+          "
+        >
+          <ShieldAlert size={18} className="mt-0.5 shrink-0" />
 
           <span>
             {registerMutation.error?.response?.data?.message ||
@@ -293,74 +503,28 @@ export default function AdminForm() {
         </div>
       )}
 
+      {/* =========================================================
+          SUCCESS MESSAGE
+      ========================================================= */}
+
       {registerMutation.isSuccess && (
-        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm font-medium text-emerald-700">
-          Registration successful. Your account is waiting for
-          Super Admin approval.
+        <div
+          className="
+            rounded-2xl
+            border
+            border-emerald-500/20
+            bg-emerald-500/10
+            p-4
+            text-sm
+            font-medium
+            text-emerald-600
+            dark:text-emerald-400
+          "
+        >
+          Registration successful. Please complete your payment
+          to activate your account.
         </div>
       )}
-
-      <div className="flex items-center justify-end gap-3 pt-2">
-        <Button
-          type="button"
-          onClick={() => router.back()}
-          className="border-black/10 bg-white/80 text-black hover:bg-black/5"
-        >
-          Cancel
-        </Button>
-
-        <Button
-          type="submit"
-          disabled={registerMutation.isPending}
-          isLoading={registerMutation.isPending}
-          loadingText="Registering..."
-          icon={ArrowRight}
-          iconPosition="right"
-        >
-          Complete Registration
-        </Button>
-      </div>
     </form>
   );
 }
-
-const FormInput = forwardRef(
-  ({ label, error, icon: Icon, className = "", ...props }, ref) => {
-    return (
-      <div className="w-full">
-        {label && (
-          <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-black/70">
-            {label}
-          </label>
-        )}
-
-        <div className="relative">
-          {Icon && (
-            <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-black/40">
-              <Icon size={16} />
-            </div>
-          )}
-
-          <input
-            ref={ref}
-            {...props}
-            className={`w-full rounded-xl border bg-white py-3 text-xs text-black outline-none transition placeholder:text-black/30 focus:border-primary focus:ring-4 focus:ring-primary/10 ${
-              Icon ? "pl-10 pr-4" : "px-4"
-            } ${
-              error ? "border-rose-500" : "border-black/10"
-            } ${className}`}
-          />
-        </div>
-
-        {error && (
-          <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-rose-500">
-            <AlertCircle size={12} />
-            {error}
-          </p>
-        )}
-      </div>
-    );
-  }
-);
-
-FormInput.displayName = "FormInput";
