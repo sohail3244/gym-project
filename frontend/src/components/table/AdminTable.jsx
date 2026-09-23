@@ -23,311 +23,8 @@ import {
   TablePagination,
 } from "./core";
 
-/* =========================================================
-   DUMMY DATA
-========================================================= */
 
-const DUMMY_ADMINS = [
-  {
-    id: "admin-001",
-    name: "Rahul Sharma",
-    username: "admin_A12F9C",
-    email: "rahul@example.com",
-    business: {
-      businessName: "Apex Fitness & Performance",
-      businessType: "GYM",
-      mobileNumber: "9876543210",
-    },
-    subscriptions: [
-      {
-        id: "sub-001",
-        status: "ACTIVE",
-        plan: {
-          id: "plan-001",
-          name: "Premium",
-          price: 4999,
-        },
-      },
-    ],
-    status: "ACTIVE",
-    createdAt: "2026-08-28T10:30:00.000Z",
-  },
 
-  {
-    id: "admin-002",
-    name: "Amit Verma",
-    username: "admin_B82K4P",
-    email: "amit@example.com",
-    business: {
-      businessName: "Power House Gym",
-      businessType: "GYM",
-      mobileNumber: "9812345678",
-    },
-    subscriptions: [
-      {
-        id: "sub-002",
-        status: "PENDING",
-        plan: {
-          id: "plan-002",
-          name: "Basic",
-          price: 1999,
-        },
-      },
-    ],
-    status: "PENDING",
-    createdAt: "2026-08-27T09:15:00.000Z",
-  },
-
-  {
-    id: "admin-003",
-    name: "Priya Singh",
-    username: "admin_C91L7X",
-    email: "priya@example.com",
-    business: {
-      businessName: "Zen Yoga Studio",
-      businessType: "YOGA_STUDIO",
-      mobileNumber: "9898989898",
-    },
-    subscriptions: [
-      {
-        id: "sub-003",
-        status: "ACTIVE",
-        plan: {
-          id: "plan-003",
-          name: "Professional",
-          price: 3499,
-        },
-      },
-    ],
-    status: "ACTIVE",
-    createdAt: "2026-08-25T14:20:00.000Z",
-  },
-
-  {
-    id: "admin-004",
-    name: "Vikas Mehta",
-    username: "admin_D73M2Q",
-    email: "vikas@example.com",
-    business: {
-      businessName: "Elite Dance Academy",
-      businessType: "DANCE_STUDIO",
-      mobileNumber: "9765432109",
-    },
-    subscriptions: [
-      {
-        id: "sub-004",
-        status: "INACTIVE",
-        plan: {
-          id: "plan-001",
-          name: "Premium",
-          price: 4999,
-        },
-      },
-    ],
-    status: "INACTIVE",
-    createdAt: "2026-08-22T11:45:00.000Z",
-  },
-
-  {
-    id: "admin-005",
-    name: "Neha Gupta",
-    username: "admin_E54N8R",
-    email: "neha@example.com",
-    business: {
-      businessName: "FitZone Pilates",
-      businessType: "PILATES_STUDIO",
-      mobileNumber: "9123456789",
-    },
-    subscriptions: [
-      {
-        id: "sub-005",
-        status: "ACTIVE",
-        plan: {
-          id: "plan-002",
-          name: "Basic",
-          price: 1999,
-        },
-      },
-    ],
-    status: "ACTIVE",
-    createdAt: "2026-08-20T08:30:00.000Z",
-  },
-
-  {
-    id: "admin-006",
-    name: "Arjun Kapoor",
-    username: "admin_F66P3S",
-    email: "arjun@example.com",
-    business: {
-      businessName: "Champion Swimming Academy",
-      businessType: "SWIMMING_ACADEMY",
-      mobileNumber: "9988776655",
-    },
-    subscriptions: [
-      {
-        id: "sub-006",
-        status: "SUSPENDED",
-        plan: {
-          id: "plan-003",
-          name: "Professional",
-          price: 3499,
-        },
-      },
-    ],
-    status: "SUSPENDED",
-    createdAt: "2026-08-18T16:10:00.000Z",
-  },
-
-  {
-    id: "admin-007",
-    name: "Sanjay Kumar",
-    username: "admin_G17Q5T",
-    email: "sanjay@example.com",
-    business: {
-      businessName: "Warrior MMA Academy",
-      businessType: "MIXED_MARTIAL_ARTS_ACADEMY",
-      mobileNumber: "9876123450",
-    },
-    subscriptions: [
-      {
-        id: "sub-007",
-        status: "ACTIVE",
-        plan: {
-          id: "plan-001",
-          name: "Premium",
-          price: 4999,
-        },
-      },
-    ],
-    status: "ACTIVE",
-    createdAt: "2026-08-15T12:00:00.000Z",
-  },
-
-  {
-    id: "admin-008",
-    name: "Pooja Sharma",
-    username: "admin_H29R6V",
-    email: "pooja@example.com",
-    business: {
-      businessName: "Smash Badminton Club",
-      businessType: "BADMINTON_ACADEMY",
-      mobileNumber: "9090909090",
-    },
-    subscriptions: [
-      {
-        id: "sub-008",
-        status: "PENDING",
-        plan: {
-          id: "plan-002",
-          name: "Basic",
-          price: 1999,
-        },
-      },
-    ],
-    status: "PENDING",
-    createdAt: "2026-08-12T10:25:00.000Z",
-  },
-
-  {
-    id: "admin-009",
-    name: "Rohit Malhotra",
-    username: "admin_J41S8W",
-    email: "rohit@example.com",
-    business: {
-      businessName: "Zumba Beats Studio",
-      businessType: "ZUMBA_STUDIO",
-      mobileNumber: "9345678901",
-    },
-    subscriptions: [
-      {
-        id: "sub-009",
-        status: "ACTIVE",
-        plan: {
-          id: "plan-003",
-          name: "Professional",
-          price: 3499,
-        },
-      },
-    ],
-    status: "ACTIVE",
-    createdAt: "2026-08-10T15:40:00.000Z",
-  },
-
-  {
-    id: "admin-010",
-    name: "Karan Joshi",
-    username: "admin_K72T1Y",
-    email: "karan@example.com",
-    business: {
-      businessName: "Victory Sports Center",
-      businessType: "SPORTS_CENTER",
-      mobileNumber: "9123987654",
-    },
-    subscriptions: [
-      {
-        id: "sub-010",
-        status: "INACTIVE",
-        plan: {
-          id: "plan-001",
-          name: "Premium",
-          price: 4999,
-        },
-      },
-    ],
-    status: "INACTIVE",
-    createdAt: "2026-08-08T09:50:00.000Z",
-  },
-
-  {
-    id: "admin-011",
-    name: "Manish Agarwal",
-    username: "admin_L83U2Z",
-    email: "manish@example.com",
-    business: {
-      businessName: "Fitness First Gym",
-      businessType: "GYM",
-      mobileNumber: "9876543211",
-    },
-    subscriptions: [
-      {
-        id: "sub-011",
-        status: "ACTIVE",
-        plan: {
-          id: "plan-002",
-          name: "Basic",
-          price: 1999,
-        },
-      },
-    ],
-    status: "ACTIVE",
-    createdAt: "2026-08-05T13:25:00.000Z",
-  },
-
-  {
-    id: "admin-012",
-    name: "Sneha Patel",
-    username: "admin_M94V3A",
-    email: "sneha@example.com",
-    business: {
-      businessName: "Balance Yoga Center",
-      businessType: "YOGA_STUDIO",
-      mobileNumber: "9988123456",
-    },
-    subscriptions: [
-      {
-        id: "sub-012",
-        status: "PENDING",
-        plan: {
-          id: "plan-003",
-          name: "Professional",
-          price: 3499,
-        },
-      },
-    ],
-    status: "PENDING",
-    createdAt: "2026-08-02T17:05:00.000Z",
-  },
-];
 
 /* =========================================================
    STATUS BADGE
@@ -438,18 +135,16 @@ const isDateInRange = (dateString, filter) => {
 ========================================================= */
 
 export default function AdminTable({
-  admins = DUMMY_ADMINS,
-
+  admins = [],
   total,
-
   showSearch = true,
   showStatusFilter = true,
   showDateFilter = true,
-
   onView,
   onEdit,
   onActivate,
   onSuspend,
+  actionLoading = false,
 }) {
   /* =======================================================
      STATES
@@ -725,8 +420,8 @@ export default function AdminTable({
       {(showSearch ||
         showStatusFilter ||
         showDateFilter) && (
-        <div
-          className="
+          <div
+            className="
             flex
             flex-col
             gap-3
@@ -740,42 +435,42 @@ export default function AdminTable({
             lg:items-center
             lg:justify-between
           "
-        >
-          {/* Search */}
-          {showSearch && (
-            <SearchBar
-              value={search}
-              onChange={setSearch}
-              placeholder="Search admins..."
-              className="w-full lg:max-w-sm"
-            />
-          )}
+          >
+            {/* Search */}
+            {showSearch && (
+              <SearchBar
+                value={search}
+                onChange={setSearch}
+                placeholder="Search admins..."
+                className="w-full lg:max-w-sm"
+              />
+            )}
 
-          {/* Filters */}
-          <div
-            className="
+            {/* Filters */}
+            <div
+              className="
               flex
               flex-wrap
               items-center
               gap-2
             "
-          >
-            {showStatusFilter && (
-              <StatusFilter
-                value={status}
-                onChange={setStatus}
-              />
-            )}
+            >
+              {showStatusFilter && (
+                <StatusFilter
+                  value={status}
+                  onChange={setStatus}
+                />
+              )}
 
-            {showDateFilter && (
-              <DateFilter
-                value={dateFilter}
-                onChange={setDateFilter}
-              />
-            )}
+              {showDateFilter && (
+                <DateFilter
+                  value={dateFilter}
+                  onChange={setDateFilter}
+                />
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* =================================================
           TABLE
@@ -1087,8 +782,8 @@ export default function AdminTable({
                           text-xs
                           font-semibold
                           ${getStatusClasses(
-                            admin.status
-                          )}
+                          admin.status
+                        )}
                         `}
                       >
                         {admin.status}
@@ -1239,15 +934,16 @@ export default function AdminTable({
                             {/* Activate */}
                             {admin.status !==
                               "ACTIVE" && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleAction(
-                                    "activate",
-                                    admin
-                                  )
-                                }
-                                className="
+                                <button
+                                  type="button"
+                                  disabled={actionLoading}
+                                  onClick={() =>
+                                    handleAction(
+                                      "activate",
+                                      admin
+                                    )
+                                  }
+                                  className="
                                   flex
                                   w-full
                                   items-center
@@ -1262,26 +958,27 @@ export default function AdminTable({
                                   hover:bg-emerald-500/10
                                   dark:text-emerald-400
                                 "
-                              >
-                                <UserCheck
-                                  size={15}
-                                />
-                                Activate
-                              </button>
-                            )}
+                                >
+                                  <UserCheck
+                                    size={15}
+                                  />
+                                  Activate
+                                </button>
+                              )}
 
                             {/* Suspend */}
                             {admin.status ===
                               "ACTIVE" && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleAction(
-                                    "suspend",
-                                    admin
-                                  )
-                                }
-                                className="
+                                <button
+                                  type="button"
+                                  disabled={actionLoading}
+                                  onClick={() =>
+                                    handleAction(
+                                      "suspend",
+                                      admin
+                                    )
+                                  }
+                                  className="
                                   flex
                                   w-full
                                   items-center
@@ -1295,13 +992,13 @@ export default function AdminTable({
                                   transition
                                   hover:bg-destructive/10
                                 "
-                              >
-                                <UserX
-                                  size={15}
-                                />
-                                Suspend
-                              </button>
-                            )}
+                                >
+                                  <UserX
+                                    size={15}
+                                  />
+                                  Suspend
+                                </button>
+                              )}
 
                           </div>
                         )}

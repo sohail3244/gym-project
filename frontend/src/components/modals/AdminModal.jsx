@@ -9,6 +9,7 @@ export default function AdminModal({
   isOpen,
   onClose,
   mode = "create",
+  admin = null,
   onSuccess,
 }) {
   const modalRef = useRef(null);
@@ -174,6 +175,7 @@ export default function AdminModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
           <AdminForm
             mode={mode}
+            admin={admin}
             onSuccess={() => {
               onSuccess?.();
               onClose();

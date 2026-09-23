@@ -1010,9 +1010,390 @@ const getAdminById = async (
   };
 };
 
+/* -------------------------------------------------------------------------- */
+/* Update Admin                                                               */
+/* -------------------------------------------------------------------------- */
+
+const updateAdmin = async ({
+  superAdminId,
+  adminId,
+  name,
+  email,
+  mobileNumber,
+  businessName,
+  businessType,
+  address,
+  city,
+  state,
+  pincode,
+  planId,
+}) => {
+  /* ---------------------------------------------------------------------- */
+  /* Verify Super Admin                                                     */
+  /* ---------------------------------------------------------------------- */
+
+  await verifySuperAdmin(superAdminId);
+
+  /* ---------------------------------------------------------------------- */
+  /* Find Admin                                                             */
+  /* ---------------------------------------------------------------------- */
+
+  const existingAdmin = await prisma.user.findFirst({
+    where: {
+      id: adminId,
+      role: "ADMIN",
+    },
+
+    include: {
+      business: true,
+
+      subscriptions: {
+        orderBy: {
+          createdAt: "desc",
+        },
+
+        take: 1,
+      },
+    },
+  });
+
+  if (!existingAdmin) {
+    throw new Error("Admin not found");
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Check Email                                                            */
+  /* ---------------------------------------------------------------------- */
+
+  if (
+    email !== undefined &&
+    email !== null &&
+    email !== "" &&
+    email !== existingAdmin.email
+  ) {
+    const existingEmail = await prisma.user.findFirst({
+      where: {
+        email,
+        NOT: {
+          id: adminId,
+        },
+      },
+    });
+
+    if (existingEmail) {
+      throw new Error(
+        "Email is already registered"
+      );
+    }
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Check Mobile                                                           */
+  /* ---------------------------------------------------------------------- */
+
+  if (
+    mobileNumber !== undefined &&
+    mobileNumber !== null &&
+    mobileNumber !== "" &&
+    mobileNumber !== existingAdmin.business?.mobileNumber
+  ) {
+    const existingMobile =
+      await prisma.business.findFirst({
+        where: {
+          mobileNumber,
+
+          NOT: {
+            userId: adminId,
+          },
+        },
+      });
+
+    if (existingMobile) {
+      throw new Error(
+        "Mobile number is already registered"
+      );
+    }
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Validate Plan                                                          */
+  /* ---------------------------------------------------------------------- */
+
+  let plan = null;
+
+  if (planId !== undefined) {
+    plan = await prisma.plan.findUnique({
+      where: {
+        id: planId,
+      },
+    });
+
+    if (!plan) {
+      throw new Error("Plan not found");
+    }
+
+    if (
+      plan.status &&
+      plan.status !== "ACTIVE"
+    ) {
+      throw new Error(
+        "Selected plan is not active"
+      );
+    }
+  }
+
+  
+  const result = await prisma.$transaction(
+    async (tx) => {
+      
+      const updatedAdmin =
+        await tx.user.update({
+          where: {
+            id: adminId,
+          },
+
+          data: {
+            ...(name !== undefined && {
+              name,
+            }),
+
+            ...(email !== undefined && {
+              email: email || null,
+            }),
+          },
+
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            email: true,
+            role: true,
+            status: true,
+            parentId: true,
+            isFirstLogin: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        });
+
+     
+
+      const updatedBusiness =
+        await tx.business.update({
+          where: {
+            userId: adminId,
+          },
+
+          data: {
+            ...(businessName !== undefined && {
+              businessName,
+            }),
+
+            ...(businessType !== undefined && {
+              businessType,
+            }),
+
+            ...(mobileNumber !== undefined && {
+              mobileNumber,
+            }),
+
+            ...(email !== undefined && {
+              email: email || null,
+            }),
+
+            ...(address !== undefined && {
+              address: address || null,
+            }),
+
+            ...(city !== undefined && {
+              city: city || null,
+            }),
+
+            ...(state !== undefined && {
+              state: state || null,
+            }),
+
+            ...(pincode !== undefined && {
+              pincode: pincode || null,
+            }),
+          },
+        });
+
+      
+      let updatedSubscription = null;
+
+      if (planId !== undefined) {
+        const currentSubscription =
+          existingAdmin.subscriptions?.[0];
+
+        if (currentSubscription) {
+          updatedSubscription =
+            await tx.subscription.update({
+              where: {
+                id: currentSubscription.id,
+              },
+
+              data: {
+                planId,
+              },
+
+              include: {
+                plan: true,
+              },
+            });
+        } else {
+          updatedSubscription =
+            await tx.subscription.create({
+              data: {
+                userId: adminId,
+                planId,
+                status:
+                  existingAdmin.status === "ACTIVE"
+                    ? "ACTIVE"
+                    : "PENDING",
+              },
+
+              include: {
+                plan: true,
+              },
+            });
+        }
+      } else if (
+        existingAdmin.subscriptions?.[0]
+      ) {
+        updatedSubscription =
+          existingAdmin.subscriptions[0];
+      }
+
+      return {
+        admin: updatedAdmin,
+        business: updatedBusiness,
+        subscription: updatedSubscription,
+      };
+    }
+  );
+
+  return result;
+};
+
+
+
+const changeAdminStatus = async ({
+  superAdminId,
+  adminId,
+  status,
+}) => {
+  
+
+  await verifySuperAdmin(superAdminId);
+
+  
+
+  const allowedStatuses = [
+    "PENDING",
+    "ACTIVE",
+    "INACTIVE",
+    "SUSPENDED",
+  ];
+
+  if (!allowedStatuses.includes(status)) {
+    throw new Error(
+      "Invalid admin status"
+    );
+  }
+
+
+
+  const existingAdmin =
+    await prisma.user.findFirst({
+      where: {
+        id: adminId,
+        role: "ADMIN",
+      },
+
+      include: {
+        subscriptions: {
+          orderBy: {
+            createdAt: "desc",
+          },
+
+          take: 1,
+        },
+      },
+    });
+
+  if (!existingAdmin) {
+    throw new Error("Admin not found");
+  }
+
+
+  const result = await prisma.$transaction(
+    async (tx) => {
+      const updatedAdmin =
+        await tx.user.update({
+          where: {
+            id: adminId,
+          },
+
+          data: {
+            status,
+          },
+
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            email: true,
+            role: true,
+            status: true,
+            parentId: true,
+            isFirstLogin: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        });
+
+      
+      const subscription =
+        existingAdmin.subscriptions?.[0];
+
+      // if (subscription) {
+      //   let subscriptionStatus;
+
+      //   if (status === "ACTIVE") {
+      //     subscriptionStatus = "ACTIVE";
+      //   } else if (
+      //     status === "SUSPENDED" ||
+      //     status === "INACTIVE"
+      //   ) {
+      //     subscriptionStatus = "INACTIVE";
+      //   } else {
+      //     subscriptionStatus = "PENDING";
+      //   }
+
+      //   await tx.subscription.update({
+      //     where: {
+      //       id: subscription.id,
+      //     },
+
+      //     data: {
+      //       status: subscriptionStatus,
+      //     },
+      //   });
+      // }
+
+      return updatedAdmin;
+    }
+  );
+
+  return result;
+};
+
 export default {
   registerAdmin,
   createAdmin,
   getAllAdmins,
   getAdminById,
+  updateAdmin,
+  changeAdminStatus,
 };

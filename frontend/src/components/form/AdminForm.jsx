@@ -1,17 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 
 import {
   User,
   Mail,
-  Lock,
   Phone,
   Building2,
   MapPin,
-  Eye,
-  EyeOff,
   ArrowRight,
   AlertCircle,
   ShieldAlert,
@@ -20,7 +17,12 @@ import {
 
 import Button from "@/components/ui/Button";
 import InputField from "@/components/ui/InputField";
-import { useRegisterAdmin } from "@/lib/hooks/useAdmin";
+
+import {
+  useCreateAdmin,
+  useUpdateAdmin,
+} from "@/lib/hooks/useAdmin";
+import { usePlans } from "@/lib/hooks/usePlans";
 
 const businessTypes = [
   {
@@ -69,38 +71,81 @@ const businessTypes = [
   },
 ];
 
-/*
-|--------------------------------------------------------------------------
-| IMPORTANT
-|--------------------------------------------------------------------------
-| Backend registerAdmin API planId ko REQUIRED rakhta hai.
-|
-| Isliye yahan plans ko API se load karna better hai.
-|
-| Agar tumhare paas already usePlans() hook hai to usko yahan use karo.
-| Neeche temporary example ke liye plans prop rakha gaya hai.
-|--------------------------------------------------------------------------
-*/
-
 export default function AdminForm({
   mode = "create",
+  admin = null,
   onSuccess,
   onClose,
-  plans = [],
 }) {
-  const [showPassword, setShowPassword] = useState(false);
+  /* =========================================================
+     CREATE ADMIN MUTATION
+  ========================================================= */
 
-  const registerMutation = useRegisterAdmin();
+  const createAdminMutation = useCreateAdmin();
+  const updateAdminMutation = useUpdateAdmin();
+
+  /* =========================================================
+     FETCH ALL PLANS
+  ========================================================= */
+
+  const {
+    data: plansResponse,
+    isLoading: plansLoading,
+    isError: plansError,
+  } = usePlans();
+
+  /*
+   * API response ko safely array me convert kar rahe hain.
+   *
+   * Supported responses:
+   *
+   * 1. [...]
+   *
+   * 2. {
+   *      data: [...]
+   *    }
+   *
+   * 3. {
+   *      plans: [...]
+   *    }
+   *
+   * 4. {
+   *      data: {
+   *        plans: [...]
+   *      }
+   *    }
+   */
+
+  const plans = Array.isArray(plansResponse)
+    ? plansResponse
+    : Array.isArray(plansResponse?.data)
+      ? plansResponse.data
+      : Array.isArray(plansResponse?.plans)
+        ? plansResponse.plans
+        : Array.isArray(plansResponse?.data?.plans)
+          ? plansResponse.data.plans
+          : [];
+
+  /* =========================================================
+     DEBUG
+  ========================================================= */
+
+  console.log("PLANS RESPONSE:", plansResponse);
+  console.log("FINAL PLANS:", plans);
+
+  /* =========================================================
+     FORM
+  ========================================================= */
 
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm({
     defaultValues: {
       name: "",
       email: "",
-      password: "",
       mobileNumber: "",
       businessName: "",
       businessType: "",
@@ -109,50 +154,115 @@ export default function AdminForm({
       state: "",
       pincode: "",
       planId: "",
-      paymentRequired: false,
     },
   });
 
-  const onSubmit = async (data) => {
-  try {
-    const payload = {
-      ...data,
-      paymentRequired: false,
-    };
-
-    await registerMutation.mutateAsync(payload);
-
-    if (onSuccess) {
-      onSuccess();
+  useEffect(() => {
+    if (mode === "edit" && admin) {
+      reset({
+        name: admin.name || "",
+        email: admin.email || "",
+        mobileNumber: admin.business?.mobileNumber || "",
+        businessName: admin.business?.businessName || "",
+        businessType: admin.business?.businessType || "",
+        address: admin.business?.address || "",
+        city: admin.business?.city || "",
+        state: admin.business?.state || "",
+        pincode: admin.business?.pincode || "",
+        planId: admin.subscriptions?.[0]?.planId || "",
+      });
     }
-  } catch (error) {
-    console.error("Admin Registration Error:", error);
-  }
-};
+
+    if (mode === "create") {
+      reset({
+        name: "",
+        email: "",
+        mobileNumber: "",
+        businessName: "",
+        businessType: "",
+        address: "",
+        city: "",
+        state: "",
+        pincode: "",
+        planId: "",
+      });
+    }
+  }, [mode, admin, reset]);
+
+  /* =========================================================
+     SUBMIT
+  ========================================================= */
+
+  const onSubmit = async (data) => {
+    try {
+      const payload = {
+        name: data.name.trim(),
+        email: data.email.trim(),
+        mobileNumber: data.mobileNumber.trim(),
+        businessName: data.businessName.trim(),
+        businessType: data.businessType,
+        address: data.address?.trim() || "",
+        city: data.city?.trim() || "",
+        state: data.state?.trim() || "",
+        pincode: data.pincode?.trim() || "",
+        planId: data.planId,
+      };
+
+      if (mode === "edit") {
+        await updateAdminMutation.mutateAsync({
+          adminId: admin.id,
+          data: payload,
+        });
+      } else {
+        await createAdminMutation.mutateAsync({
+          ...payload,
+          paymentRequired: false,
+        });
+      }
+
+      onSuccess?.();
+    } catch (error) {
+      console.error(
+        mode === "edit"
+          ? "Update Admin Error:"
+          : "Create Admin Error:",
+        error?.response?.data || error
+      );
+    }
+  };
+
+  /* =========================================================
+     UI
+  ========================================================= */
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      {/* =========================================================
-          ADMIN PROFILE & SECURITY
-      ========================================================= */}
-
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="space-y-5"
+    >
       <div className="space-y-5 rounded-2xl border border-border bg-card p-5 shadow-sm">
+
+        {/* =====================================================
+            ADMIN PROFILE
+        ===================================================== */}
+
         <div className="flex items-center gap-2 border-b border-border pb-3">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <User size={16} />
           </div>
 
           <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-            Admin Profile & Security
+            Admin Profile
           </h3>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+
           {/* Full Name */}
 
           <InputField
             label="Full Name"
-            placeholder="Rahul Sharma"
+            placeholder="Vikas Singh"
             icon={User}
             error={errors.name?.message}
             {...register("name", {
@@ -169,7 +279,7 @@ export default function AdminForm({
           <InputField
             label="Email Address"
             type="email"
-            placeholder="rahul@example.com"
+            placeholder="vikas@danceworld.com"
             icon={Mail}
             error={errors.email?.message}
             {...register("email", {
@@ -181,78 +291,29 @@ export default function AdminForm({
             })}
           />
 
-          {/* Password */}
-
-          <div className="relative">
-            <InputField
-              label="Password"
-              type={showPassword ? "text" : "password"}
-              placeholder="••••••••"
-              icon={Lock}
-              error={errors.password?.message}
-              {...register("password", {
-                required: "Password is required",
-                minLength: {
-                  value: 8,
-                  message: "Password must be at least 8 characters",
-                },
-              })}
-            />
-
-            <button
-              type="button"
-              onClick={() => setShowPassword((prev) => !prev)}
-              className="
-                absolute
-                right-3
-                top-8.5
-                flex
-                h-7
-                w-7
-                items-center
-                justify-center
-                rounded-md
-                text-muted-foreground
-                transition
-                hover:bg-secondary
-                hover:text-foreground
-                active:scale-95
-              "
-              tabIndex={-1}
-              aria-label={
-                showPassword ? "Hide password" : "Show password"
-              }
-            >
-              {showPassword ? (
-                <EyeOff size={16} />
-              ) : (
-                <Eye size={16} />
-              )}
-            </button>
-          </div>
-
           {/* Mobile */}
 
           <InputField
             label="Mobile Number"
             type="tel"
             inputMode="numeric"
-            placeholder="9876543210"
+            placeholder="9876543212"
             icon={Phone}
             error={errors.mobileNumber?.message}
             {...register("mobileNumber", {
               required: "Mobile number is required",
               pattern: {
                 value: /^[0-9]{10}$/,
-                message: "Enter a valid 10-digit mobile number",
+                message:
+                  "Enter a valid 10-digit mobile number",
               },
             })}
           />
         </div>
 
-        {/* =========================================================
+        {/* =====================================================
             BUSINESS DETAILS
-        ========================================================= */}
+        ===================================================== */}
 
         <div className="flex items-center gap-2 border-b border-border pb-3 pt-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -265,11 +326,12 @@ export default function AdminForm({
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+
           {/* Business Name */}
 
           <InputField
             label="Business / Gym Name"
-            placeholder="Apex Fitness & Performance"
+            placeholder="Dance World"
             icon={Building2}
             error={errors.businessName?.message}
             {...register("businessName", {
@@ -307,17 +369,21 @@ export default function AdminForm({
                 outline-none
                 transition-all
                 duration-200
-                ${
-                  errors.businessType
-                    ? "border-destructive focus:border-destructive focus:ring-2 focus:ring-destructive/10"
-                    : "border-border focus:border-primary focus:ring-2 focus:ring-primary/10"
+                ${errors.businessType
+                  ? "border-destructive focus:border-destructive focus:ring-2 focus:ring-destructive/10"
+                  : "border-border focus:border-primary focus:ring-2 focus:ring-primary/10"
                 }
               `}
             >
-              <option value="">Choose business type...</option>
+              <option value="">
+                Choose business type...
+              </option>
 
               {businessTypes.map((type) => (
-                <option key={type.value} value={type.value}>
+                <option
+                  key={type.value}
+                  value={type.value}
+                >
                   {type.label}
                 </option>
               ))}
@@ -332,9 +398,9 @@ export default function AdminForm({
           </div>
         </div>
 
-        {/* =========================================================
-            PLAN
-        ========================================================= */}
+        {/* =====================================================
+            SUBSCRIPTION PLAN
+        ===================================================== */}
 
         <div className="flex items-center gap-2 border-b border-border pb-3 pt-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -347,21 +413,60 @@ export default function AdminForm({
         </div>
 
         <div className="w-full">
+
           <label className="mb-1.5 block text-sm font-medium text-foreground">
             Select Plan
             <span className="ml-1 text-destructive">*</span>
           </label>
 
           <select
-  {...register("paymentRequired", {
-    
-    setValueAs: (value) => value === "true",
-  })}
-  defaultValue="false"
->
-  <option value="false">No Payment Required</option>
-  <option value="true">Payment Required</option>
-</select>
+            {...register("planId", {
+              required:
+                "Please select a subscription plan",
+            })}
+            disabled={plansLoading}
+            className={`
+              min-h-10
+              w-full
+              rounded-xl
+              border
+              bg-background
+              px-3
+              py-2
+              text-sm
+              text-foreground
+              outline-none
+              transition-all
+              duration-200
+              ${errors.planId
+                ? "border-destructive focus:border-destructive focus:ring-2 focus:ring-destructive/10"
+                : "border-border focus:border-primary focus:ring-2 focus:ring-primary/10"
+              }
+              ${plansLoading
+                ? "cursor-not-allowed opacity-60"
+                : ""
+              }
+            `}
+          >
+            <option value="">
+              {plansLoading
+                ? "Loading plans..."
+                : "Choose subscription plan..."}
+            </option>
+
+            {plans.map((plan) => (
+              <option
+                key={plan.id}
+                value={plan.id}
+              >
+                {plan.name} - ₹
+                {Number(plan.price).toFixed(2)} -{" "}
+                {plan.durationInDays} Days
+              </option>
+            ))}
+          </select>
+
+          {/* Plan Validation Error */}
 
           {errors.planId && (
             <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-destructive">
@@ -370,16 +475,29 @@ export default function AdminForm({
             </p>
           )}
 
-          {plans.length === 0 && (
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              No subscription plans available.
+          {/* Plan API Error */}
+
+          {plansError && (
+            <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-destructive">
+              <AlertCircle size={12} />
+              Failed to load subscription plans.
             </p>
           )}
+
+          {/* No Plans */}
+
+          {!plansLoading &&
+            !plansError &&
+            plans.length === 0 && (
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                No subscription plans available.
+              </p>
+            )}
         </div>
 
-        {/* =========================================================
+        {/* =====================================================
             LOCATION & ADDRESS
-        ========================================================= */}
+        ===================================================== */}
 
         <div className="flex items-center gap-2 border-b border-border pb-3 pt-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -392,12 +510,13 @@ export default function AdminForm({
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {/* Street Address */}
+
+          {/* Address */}
 
           <div className="md:col-span-3">
             <InputField
               label="Street Address"
-              placeholder="Plot No. 42, Kings Avenue, Sector 5"
+              placeholder="Bandra West"
               icon={MapPin}
               error={errors.address?.message}
               {...register("address")}
@@ -428,22 +547,41 @@ export default function AdminForm({
             label="Postal Code (PIN)"
             type="text"
             inputMode="numeric"
-            placeholder="400053"
+            placeholder="400050"
             error={errors.pincode?.message}
             {...register("pincode", {
               pattern: {
                 value: /^[0-9]{6}$/,
-                message: "Enter a valid 6-digit postal code",
+                message:
+                  "Enter a valid 6-digit postal code",
               },
             })}
           />
         </div>
 
-        {/* =========================================================
+        {/* =====================================================
+            PAYMENT INFO
+        ===================================================== */}
+
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
+          <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+            Payment is not required for this admin.
+          </p>
+
+          <p className="mt-1 text-xs text-muted-foreground">
+            The admin will be created and activated
+            without payment.
+          </p>
+        </div>
+
+        {/* =====================================================
             ACTION BUTTONS
-        ========================================================= */}
+        ===================================================== */}
 
         <div className="flex items-center justify-end gap-3 pt-1">
+
+          {/* Cancel */}
+
           <Button
             variant="outline"
             type="button"
@@ -458,28 +596,45 @@ export default function AdminForm({
             Cancel
           </Button>
 
+          {/* Create Admin */}
+
           <Button
             type="submit"
             disabled={
-              registerMutation.isPending || plans.length === 0
+              createAdminMutation.isPending ||
+              updateAdminMutation.isPending ||
+              plansLoading ||
+              plans.length === 0
             }
-            isLoading={registerMutation.isPending}
-            loadingText="Registering..."
+            isLoading={
+              createAdminMutation.isPending ||
+              updateAdminMutation.isPending
+            }
+            loadingText={
+              mode === "edit"
+                ? "Updating..."
+                : "Creating..."
+            }
             icon={ArrowRight}
             iconPosition="right"
           >
-            Complete Registration
+            {mode === "edit"
+              ? "Update Admin"
+              : "Create Admin"}
           </Button>
         </div>
       </div>
 
-      {/* =========================================================
+      {/* =====================================================
           API ERROR
-      ========================================================= */}
+      ===================================================== */}
 
-      {registerMutation.isError && (
-        <div
-          className="
+      {(
+        createAdminMutation.isError ||
+        updateAdminMutation.isError
+      ) && (
+          <div
+            className="
             flex
             items-start
             gap-3
@@ -492,24 +647,31 @@ export default function AdminForm({
             font-medium
             text-destructive
           "
-        >
-          <ShieldAlert size={18} className="mt-0.5 shrink-0" />
+          >
+            <ShieldAlert
+              size={18}
+              className="mt-0.5 shrink-0"
+            />
 
-          <span>
-            {registerMutation.error?.response?.data?.message ||
-              registerMutation.error?.message ||
-              "Registration failed. Please try again."}
-          </span>
-        </div>
-      )}
+            <span>
+              {createAdminMutation.error?.response?.data
+                ?.message ||
+                createAdminMutation.error?.message ||
+                "Admin creation failed. Please try again."}
+            </span>
+          </div>
+        )}
 
-      {/* =========================================================
+      {/* =====================================================
           SUCCESS MESSAGE
-      ========================================================= */}
+      ===================================================== */}
 
-      {registerMutation.isSuccess && (
-        <div
-          className="
+      {(
+        createAdminMutation.isSuccess ||
+        updateAdminMutation.isSuccess
+      ) && (
+          <div
+            className="
             rounded-2xl
             border
             border-emerald-500/20
@@ -520,11 +682,10 @@ export default function AdminForm({
             text-emerald-600
             dark:text-emerald-400
           "
-        >
-          Registration successful. Please complete your payment
-          to activate your account.
-        </div>
-      )}
+          >
+            Admin created successfully and activated.
+          </div>
+        )}
     </form>
   );
 }

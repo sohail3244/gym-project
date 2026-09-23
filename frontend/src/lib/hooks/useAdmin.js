@@ -3,28 +3,30 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import api from "../api";
 
+import api from "../api";
 
 const ADMIN_QUERY_KEYS = {
   all: ["admins"],
+
   lists: () => [...ADMIN_QUERY_KEYS.all, "list"],
+
   list: (params) => [
     ...ADMIN_QUERY_KEYS.lists(),
     params,
   ],
+
   details: () => [...ADMIN_QUERY_KEYS.all, "detail"],
+
   detail: (id) => [
     ...ADMIN_QUERY_KEYS.details(),
     id,
   ],
 };
 
-/*
-|--------------------------------------------------------------------------
-| Register Admin
-|--------------------------------------------------------------------------
-*/
+/* -------------------------------------------------------------------------- */
+/* Register Admin - Public Registration                                       */
+/* -------------------------------------------------------------------------- */
 
 export const useRegisterAdmin = () => {
   const queryClient = useQueryClient();
@@ -47,11 +49,34 @@ export const useRegisterAdmin = () => {
   });
 };
 
-/*
-|--------------------------------------------------------------------------
-| Get All Admins
-|--------------------------------------------------------------------------
-*/
+/* -------------------------------------------------------------------------- */
+/* Create Admin - Super Admin                                                 */
+/* -------------------------------------------------------------------------- */
+
+export const useCreateAdmin = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.post(
+        "/admin",
+        data
+      );
+
+      return response.data;
+    },
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ADMIN_QUERY_KEYS.lists(),
+      });
+    },
+  });
+};
+
+/* -------------------------------------------------------------------------- */
+/* Get All Admins                                                             */
+/* -------------------------------------------------------------------------- */
 
 export const useAdmins = (params = {}) => {
   return useQuery({
@@ -59,7 +84,7 @@ export const useAdmins = (params = {}) => {
 
     queryFn: async () => {
       const response = await api.get(
-        "/admins",
+        "/admin",
         {
           params,
         }
@@ -75,11 +100,9 @@ export const useAdmins = (params = {}) => {
   });
 };
 
-/*
-|--------------------------------------------------------------------------
-| Get Single Admin
-|--------------------------------------------------------------------------
-*/
+/* -------------------------------------------------------------------------- */
+/* Get Single Admin                                                           */
+/* -------------------------------------------------------------------------- */
 
 export const useAdmin = (adminId) => {
   return useQuery({
@@ -100,11 +123,9 @@ export const useAdmin = (adminId) => {
   });
 };
 
-/*
-|--------------------------------------------------------------------------
-| Admin Query Helpers
-|--------------------------------------------------------------------------
-*/
+/* -------------------------------------------------------------------------- */
+/* Admin Query Helpers                                                        */
+/* -------------------------------------------------------------------------- */
 
 export const useAdminActions = () => {
   const queryClient = useQueryClient();
@@ -133,6 +154,78 @@ export const useAdminActions = () => {
     refreshAdmin,
     clearAdminCache,
   };
+};
+
+/* -------------------------------------------------------------------------- */
+/* Update Admin                                                               */
+/* -------------------------------------------------------------------------- */
+
+export const useUpdateAdmin = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      adminId,
+      data,
+    }) => {
+      const response = await api.put(
+        `/admin/${adminId}`,
+        data
+      );
+
+      return response.data;
+    },
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ADMIN_QUERY_KEYS.lists(),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey:
+          ADMIN_QUERY_KEYS.detail(
+            variables.adminId
+          ),
+      });
+    },
+  });
+};
+
+/* -------------------------------------------------------------------------- */
+/* Change Admin Status                                                        */
+/* -------------------------------------------------------------------------- */
+
+export const useChangeAdminStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      adminId,
+      status,
+    }) => {
+      const response = await api.patch(
+        `/admin/${adminId}/status`,
+        {
+          status,
+        }
+      );
+
+      return response.data;
+    },
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ADMIN_QUERY_KEYS.lists(),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey:
+          ADMIN_QUERY_KEYS.detail(
+            variables.adminId
+          ),
+      });
+    },
+  });
 };
 
 export { ADMIN_QUERY_KEYS };

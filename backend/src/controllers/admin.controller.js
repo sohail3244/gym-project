@@ -193,9 +193,134 @@ export const getAdminById = async (req, res) => {
   }
 };
 
+/* -------------------------------------------------------------------------- */
+/* Update Admin                                                               */
+/* -------------------------------------------------------------------------- */
+
+export const updateAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin ID is required",
+      });
+    }
+
+    const {
+      name,
+      email,
+      mobileNumber,
+      businessName,
+      businessType,
+      address,
+      city,
+      state,
+      pincode,
+      planId,
+    } = req.body;
+
+    const result =
+      await AdminService.updateAdmin({
+        superAdminId: req.user.id,
+
+        adminId: id,
+
+        name,
+        email,
+        mobileNumber,
+        businessName,
+        businessType,
+        address,
+        city,
+        state,
+        pincode,
+        planId,
+      });
+
+    return res.status(200).json({
+      success: true,
+      message: "Admin updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error(
+      "Update Admin Error:",
+      error
+    );
+
+    return res.status(400).json({
+      success: false,
+      message:
+        error?.message ||
+        "Failed to update admin",
+    });
+  }
+};
+
+/* -------------------------------------------------------------------------- */
+/* Change Admin Status                                                        */
+/* -------------------------------------------------------------------------- */
+
+export const changeAdminStatus = async (
+  req,
+  res
+) => {
+  try {
+    const { id } = req.params;
+
+    const { status } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin ID is required",
+      });
+    }
+
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: "Status is required",
+      });
+    }
+
+    const result =
+      await AdminService.changeAdminStatus({
+        superAdminId: req.user.id,
+
+        adminId: id,
+
+        status,
+      });
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Admin status updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error(
+      "Change Admin Status Error:",
+      error
+    );
+
+    return res.status(400).json({
+      success: false,
+      message:
+        error?.message ||
+        "Failed to update admin status",
+    });
+  }
+};
+
 export default {
   registerAdmin,
   createAdmin,
   getAllAdmins,
   getAdminById,
+  updateAdmin,
+  changeAdminStatus,
 };
