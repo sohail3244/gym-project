@@ -23,99 +23,10 @@ import SearchBar from "../ui/SearchBar";
 import StatusFilter from "../ui/StatusFilter";
 import DateFilter from "../ui/DateFilter";
 
-const DUMMY_MEMBERS = [
-  {
-    id: "mem_001",
-    adminId: "admin_001",
-    name: "Rahul Sharma",
-    mobileNumber: "9876543210",
-    email: "rahul@gmail.com",
-    gender: "MALE",
-    dateOfBirth: "1995-04-12",
-    address: "Sector 5, Jaipur",
-    city: "Jaipur",
-    state: "Rajasthan",
-    pincode: "302001",
-    status: "ACTIVE",
-    createdAt: "2026-08-28T10:30:00",
-  },
-  {
-    id: "mem_002",
-    adminId: "admin_001",
-    name: "Priya Singh",
-    mobileNumber: "9876501234",
-    email: "priya@gmail.com",
-    gender: "FEMALE",
-    dateOfBirth: "1998-07-20",
-    address: "Vaishali Nagar",
-    city: "Jaipur",
-    state: "Rajasthan",
-    pincode: "302021",
-    status: "ACTIVE",
-    createdAt: "2026-08-27T12:15:00",
-  },
-  {
-    id: "mem_003",
-    adminId: "admin_002",
-    name: "Amit Verma",
-    mobileNumber: "9988776655",
-    email: "amit@gmail.com",
-    gender: "MALE",
-    dateOfBirth: "1992-02-15",
-    address: "Malviya Nagar",
-    city: "Jaipur",
-    state: "Rajasthan",
-    pincode: "302017",
-    status: "INACTIVE",
-    createdAt: "2026-08-26T09:45:00",
-  },
-  {
-    id: "mem_004",
-    adminId: "admin_002",
-    name: "Neha Gupta",
-    mobileNumber: "9123456789",
-    email: "neha@gmail.com",
-    gender: "FEMALE",
-    dateOfBirth: "2000-11-05",
-    address: "Mansarovar",
-    city: "Jaipur",
-    state: "Rajasthan",
-    pincode: "302020",
-    status: "ACTIVE",
-    createdAt: "2026-08-25T16:20:00",
-  },
-  {
-    id: "mem_005",
-    adminId: "admin_003",
-    name: "Vikas Kumar",
-    mobileNumber: "9012345678",
-    email: "vikas@gmail.com",
-    gender: "MALE",
-    dateOfBirth: "1990-08-18",
-    address: "Civil Lines",
-    city: "Jaipur",
-    state: "Rajasthan",
-    pincode: "302006",
-    status: "SUSPENDED",
-    createdAt: "2026-08-24T11:10:00",
-  },
-  {
-    id: "mem_006",
-    adminId: "admin_003",
-    name: "Anjali Mehta",
-    mobileNumber: "9090909090",
-    email: "anjali@gmail.com",
-    gender: "FEMALE",
-    dateOfBirth: "1997-03-25",
-    address: "C-Scheme",
-    city: "Jaipur",
-    state: "Rajasthan",
-    pincode: "302001",
-    status: "ACTIVE",
-    createdAt: "2026-08-23T14:40:00",
-  },
-];
 
+// =========================
+// FORMAT DATE
+// =========================
 const formatDate = (date) => {
   if (!date) return "-";
 
@@ -126,6 +37,10 @@ const formatDate = (date) => {
   });
 };
 
+
+// =========================
+// STATUS CLASS
+// =========================
 const getStatusClass = (status) => {
   switch (status) {
     case "ACTIVE":
@@ -142,40 +57,78 @@ const getStatusClass = (status) => {
   }
 };
 
-export default function MemberTable() {
-  const [members] = useState(DUMMY_MEMBERS);
 
+// =========================
+// MAIN COMPONENT
+// =========================
+export default function MemberTable({
+  members = [],
+  isLoading = false,
+  isFetching = false,
+}) {
+  // =========================
+  // PAGINATION
+  // =========================
   const [page, setPage] = useState(1);
+
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
+
+  // =========================
+  // FILTERS
+  // =========================
   const [search, setSearch] = useState("");
+
   const [status, setStatus] = useState("");
+
   const [date, setDate] = useState("");
 
+
+  // =========================
+  // ACTION MENU
+  // =========================
   const [openAction, setOpenAction] = useState(null);
 
+
+  // =========================
+  // FILTER MEMBERS
+  // =========================
   const filteredMembers = useMemo(() => {
     return members.filter((member) => {
-      const searchText = search.toLowerCase();
+      const searchText = search.toLowerCase().trim();
 
       const matchesSearch =
         !search ||
-        member.name.toLowerCase().includes(searchText) ||
-        member.mobileNumber
-          .toLowerCase()
+        member.name
+          ?.toLowerCase()
           .includes(searchText) ||
-        member.email?.toLowerCase().includes(searchText) ||
-        member.city?.toLowerCase().includes(searchText) ||
-        member.state?.toLowerCase().includes(searchText) ||
-        member.id.toLowerCase().includes(searchText);
+        member.mobileNumber
+          ?.toLowerCase()
+          .includes(searchText) ||
+        member.email
+          ?.toLowerCase()
+          .includes(searchText) ||
+        member.city
+          ?.toLowerCase()
+          .includes(searchText) ||
+        member.state
+          ?.toLowerCase()
+          .includes(searchText) ||
+        member.id
+          ?.toLowerCase()
+          .includes(searchText);
 
       const matchesStatus =
-        !status || member.status === status;
+        !status ||
+        member.status === status;
+
 
       let matchesDate = true;
 
-      if (date) {
-        const memberDate = new Date(member.createdAt)
+      if (date && member.createdAt) {
+        const memberDate = new Date(
+          member.createdAt
+        )
           .toISOString()
           .split("T")[0];
 
@@ -188,8 +141,17 @@ export default function MemberTable() {
         matchesDate
       );
     });
-  }, [members, search, status, date]);
+  }, [
+    members,
+    search,
+    status,
+    date,
+  ]);
 
+
+  // =========================
+  // PAGINATION
+  // =========================
   const total = filteredMembers.length;
 
   const totalPages = Math.max(
@@ -202,26 +164,46 @@ export default function MemberTable() {
     page * rowsPerPage
   );
 
+
+  // =========================
+  // SEARCH
+  // =========================
   const handleSearch = (value) => {
     setSearch(value);
     setPage(1);
   };
 
+
+  // =========================
+  // STATUS FILTER
+  // =========================
   const handleStatusChange = (value) => {
     setStatus(value);
     setPage(1);
   };
 
+
+  // =========================
+  // DATE FILTER
+  // =========================
   const handleDateChange = (value) => {
     setDate(value);
     setPage(1);
   };
 
+
+  // =========================
+  // ROWS PER PAGE
+  // =========================
   const handleRowsPerPageChange = (value) => {
     setRowsPerPage(Number(value));
     setPage(1);
   };
 
+
+  // =========================
+  // CLEAR FILTERS
+  // =========================
   const clearFilters = () => {
     setSearch("");
     setStatus("");
@@ -229,23 +211,83 @@ export default function MemberTable() {
     setPage(1);
   };
 
+
+  // =========================
+  // VIEW MEMBER
+  // =========================
+  const handleViewMember = (member) => {
+    console.log("View member:", member);
+
+    setOpenAction(null);
+  };
+
+
+  // =========================
+  // EDIT MEMBER
+  // =========================
+  const handleEditMember = (member) => {
+    console.log("Edit member:", member);
+
+    setOpenAction(null);
+  };
+
+
+  // =========================
+  // TOGGLE STATUS
+  // =========================
+  const handleToggleStatus = (member) => {
+    console.log("Toggle status:", member);
+
+    setOpenAction(null);
+  };
+
+
+  // =========================
+  // DELETE MEMBER
+  // =========================
+  const handleDeleteMember = (member) => {
+    console.log("Delete member:", member);
+
+    setOpenAction(null);
+  };
+
+
   return (
     <div className="space-y-4">
 
       {/* =========================
           FILTERS
       ========================== */}
+      <div
+        className="
+          flex
+          flex-col
+          gap-3
+          lg:flex-row
+          lg:items-center
+          lg:justify-between
+        "
+      >
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div
+          className="
+            flex
+            flex-1
+            flex-col
+            gap-3
+            sm:flex-row
+          "
+        >
 
-        <div className="flex flex-1 flex-col gap-3 sm:flex-row">
-
+          {/* SEARCH */}
           <SearchBar
             value={search}
             onChange={handleSearch}
             placeholder="Search members..."
           />
 
+
+          {/* STATUS */}
           <StatusFilter
             value={status}
             onChange={handleStatusChange}
@@ -265,6 +307,8 @@ export default function MemberTable() {
             ]}
           />
 
+
+          {/* DATE */}
           <DateFilter
             value={date}
             onChange={handleDateChange}
@@ -272,6 +316,8 @@ export default function MemberTable() {
 
         </div>
 
+
+        {/* CLEAR FILTERS */}
         {(search || status || date) && (
           <button
             type="button"
@@ -296,14 +342,25 @@ export default function MemberTable() {
 
       </div>
 
+
       {/* =========================
           TABLE
       ========================== */}
-
-      <div className="overflow-hidden rounded-2xl border border-border bg-background">
+      <div
+        className="
+          overflow-hidden
+          rounded-2xl
+          border
+          border-border
+          bg-background
+        "
+      >
 
         <Table>
 
+          {/* =========================
+              HEADER
+          ========================== */}
           <TableHeader>
 
             <TableRow>
@@ -315,29 +372,36 @@ export default function MemberTable() {
                 #
               </TableCell>
 
+
               <TableCell header>
                 Member
               </TableCell>
+
 
               <TableCell header>
                 Mobile
               </TableCell>
 
+
               <TableCell header>
                 Gender
               </TableCell>
+
 
               <TableCell header>
                 City
               </TableCell>
 
+
               <TableCell header>
                 Status
               </TableCell>
 
+
               <TableCell header>
                 Joined
               </TableCell>
+
 
               <TableCell
                 header
@@ -350,9 +414,14 @@ export default function MemberTable() {
 
           </TableHeader>
 
+
+          {/* =========================
+              BODY
+          ========================== */}
           <TableBody>
 
-            {paginatedMembers.length === 0 ? (
+            {/* LOADING */}
+            {isLoading ? (
 
               <TableRow>
 
@@ -361,15 +430,37 @@ export default function MemberTable() {
                   align="center"
                   className="py-14"
                 >
+
+                  <div className="text-sm text-muted-foreground">
+                    Loading members...
+                  </div>
+
+                </TableCell>
+
+              </TableRow>
+
+            ) : paginatedMembers.length === 0 ? (
+
+              /* EMPTY */
+              <TableRow>
+
+                <TableCell
+                  colSpan={8}
+                  align="center"
+                  className="py-14"
+                >
+
                   <div className="text-sm text-muted-foreground">
                     No members found.
                   </div>
+
                 </TableCell>
 
               </TableRow>
 
             ) : (
 
+              /* MEMBERS */
               paginatedMembers.map(
                 (member, index) => (
 
@@ -377,59 +468,75 @@ export default function MemberTable() {
                     key={member.id}
                   >
 
-                    {/* INDEX */}
-
+                    {/* =========================
+                        INDEX
+                    ========================== */}
                     <TableCell>
+
                       {(page - 1) *
                         rowsPerPage +
                         index +
                         1}
+
                     </TableCell>
 
-                    {/* MEMBER */}
 
+                    {/* =========================
+                        MEMBER
+                    ========================== */}
                     <TableCell>
 
                       <div>
+
                         <p className="font-medium text-foreground">
-                          {member.name}
+                          {member.name || "-"}
                         </p>
 
                         <p className="text-xs text-muted-foreground">
                           {member.email || "-"}
                         </p>
+
                       </div>
 
                     </TableCell>
 
-                    {/* MOBILE */}
 
+                    {/* =========================
+                        MOBILE
+                    ========================== */}
                     <TableCell>
 
                       <span className="text-sm text-foreground">
-                        {member.mobileNumber}
+                        {member.mobileNumber || "-"}
                       </span>
 
                     </TableCell>
 
-                    {/* GENDER */}
 
+                    {/* =========================
+                        GENDER
+                    ========================== */}
                     <TableCell>
 
                       <span className="text-sm text-muted-foreground">
                         {member.gender
-                          ? member.gender
-                              .replaceAll("_", " ")
+                          ? member.gender.replaceAll(
+                              "_",
+                              " "
+                            )
                           : "-"}
                       </span>
 
                     </TableCell>
 
-                    {/* CITY */}
 
+                    {/* =========================
+                        CITY
+                    ========================== */}
                     <TableCell>
 
                       <div>
+
                         <p className="text-sm text-foreground">
                           {member.city || "-"}
                         </p>
@@ -437,12 +544,15 @@ export default function MemberTable() {
                         <p className="text-xs text-muted-foreground">
                           {member.state || ""}
                         </p>
+
                       </div>
 
                     </TableCell>
 
-                    {/* STATUS */}
 
+                    {/* =========================
+                        STATUS
+                    ========================== */}
                     <TableCell>
 
                       <span
@@ -458,13 +568,15 @@ export default function MemberTable() {
                           )}
                         `}
                       >
-                        {member.status}
+                        {member.status || "-"}
                       </span>
 
                     </TableCell>
 
-                    {/* CREATED */}
 
+                    {/* =========================
+                        JOINED
+                    ========================== */}
                     <TableCell>
 
                       <span className="text-sm text-muted-foreground">
@@ -475,8 +587,10 @@ export default function MemberTable() {
 
                     </TableCell>
 
-                    {/* ACTIONS */}
 
+                    {/* =========================
+                        ACTIONS
+                    ========================== */}
                     <TableCell align="right">
 
                       <div className="relative inline-flex">
@@ -504,16 +618,20 @@ export default function MemberTable() {
                             hover:text-foreground
                           "
                         >
+
                           <MoreVertical
                             size={17}
                           />
+
                         </button>
+
 
                         {openAction ===
                           member.id && (
 
                           <>
 
+                            {/* BACKDROP */}
                             <div
                               className="fixed inset-0 z-10"
                               onClick={() =>
@@ -521,6 +639,8 @@ export default function MemberTable() {
                               }
                             />
 
+
+                            {/* ACTION MENU */}
                             <div
                               className="
                                 absolute
@@ -539,18 +659,13 @@ export default function MemberTable() {
                             >
 
                               {/* VIEW */}
-
                               <button
                                 type="button"
-                                onClick={() => {
-                                  console.log(
-                                    "View member:",
+                                onClick={() =>
+                                  handleViewMember(
                                     member
-                                  );
-                                  setOpenAction(
-                                    null
-                                  );
-                                }}
+                                  )
+                                }
                                 className="
                                   flex
                                   w-full
@@ -564,23 +679,22 @@ export default function MemberTable() {
                                   hover:bg-secondary
                                 "
                               >
+
                                 <Eye size={15} />
+
                                 View Details
+
                               </button>
+
 
                               {/* EDIT */}
-
                               <button
                                 type="button"
-                                onClick={() => {
-                                  console.log(
-                                    "Edit member:",
+                                onClick={() =>
+                                  handleEditMember(
                                     member
-                                  );
-                                  setOpenAction(
-                                    null
-                                  );
-                                }}
+                                  )
+                                }
                                 className="
                                   flex
                                   w-full
@@ -594,23 +708,22 @@ export default function MemberTable() {
                                   hover:bg-secondary
                                 "
                               >
+
                                 <Pencil size={15} />
+
                                 Edit Member
+
                               </button>
 
-                              {/* STATUS */}
 
+                              {/* STATUS */}
                               <button
                                 type="button"
-                                onClick={() => {
-                                  console.log(
-                                    "Toggle status:",
+                                onClick={() =>
+                                  handleToggleStatus(
                                     member
-                                  );
-                                  setOpenAction(
-                                    null
-                                  );
-                                }}
+                                  )
+                                }
                                 className="
                                   flex
                                   w-full
@@ -624,37 +737,41 @@ export default function MemberTable() {
                                   hover:bg-secondary
                                 "
                               >
+
                                 {member.status ===
                                 "ACTIVE" ? (
+
                                   <>
                                     <UserX
                                       size={15}
                                     />
+
                                     Deactivate
                                   </>
+
                                 ) : (
+
                                   <>
                                     <UserCheck
                                       size={15}
                                     />
+
                                     Activate
                                   </>
+
                                 )}
+
                               </button>
 
-                              {/* DELETE */}
 
+                              {/* DELETE */}
                               <button
                                 type="button"
-                                onClick={() => {
-                                  console.log(
-                                    "Delete member:",
+                                onClick={() =>
+                                  handleDeleteMember(
                                     member
-                                  );
-                                  setOpenAction(
-                                    null
-                                  );
-                                }}
+                                  )
+                                }
                                 className="
                                   flex
                                   w-full
@@ -669,8 +786,13 @@ export default function MemberTable() {
                                   hover:bg-destructive/10
                                 "
                               >
-                                <Trash2 size={15} />
+
+                                <Trash2
+                                  size={15}
+                                />
+
                                 Delete Member
+
                               </button>
 
                             </div>
@@ -692,6 +814,10 @@ export default function MemberTable() {
 
           </TableBody>
 
+
+          {/* =========================
+              PAGINATION
+          ========================== */}
           <tfoot>
 
             <tr>
@@ -719,6 +845,14 @@ export default function MemberTable() {
         </Table>
 
       </div>
+
+
+      {/* FETCHING INDICATOR */}
+      {isFetching && !isLoading && (
+        <p className="text-xs text-muted-foreground">
+          Updating members...
+        </p>
+      )}
 
     </div>
   );
