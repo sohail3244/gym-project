@@ -1,15 +1,43 @@
-"use client";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../api";
 
 /* =========================================================
+   QUERY KEYS
+========================================================= */
+
+export const PLAN_QUERY_KEYS = {
+  all: ["plans"],
+
+  lists: () => [...PLAN_QUERY_KEYS.all, "list"],
+
+  list: (params = {}) => [
+    ...PLAN_QUERY_KEYS.lists(),
+    params,
+  ],
+
+  details: () => [...PLAN_QUERY_KEYS.all, "detail"],
+
+  detail: (id) => [
+    ...PLAN_QUERY_KEYS.details(),
+    id,
+  ],
+};
+
+
+/* =========================================================
    GET ALL PLANS
+   GET /plans
 ========================================================= */
 
 export const usePlans = (params = {}) => {
   return useQuery({
-    queryKey: ["plans", params],
+    queryKey: PLAN_QUERY_KEYS.list(params),
+
     queryFn: async () => {
       const response = await api.get("/plans", {
         params,
@@ -17,27 +45,41 @@ export const usePlans = (params = {}) => {
 
       return response.data;
     },
+
+    staleTime: 30 * 1000,
+
+    placeholderData: (previousData) => previousData,
   });
 };
+
 
 /* =========================================================
    GET PLAN BY ID
+   GET /plans/:id
 ========================================================= */
 
-export const usePlan = (id) => {
+export const usePlan = (planId) => {
   return useQuery({
-    queryKey: ["plan", id],
+    queryKey: PLAN_QUERY_KEYS.detail(planId),
+
     queryFn: async () => {
-      const response = await api.get(`/plans/${id}`);
+      const response = await api.get(
+        `/plans/${planId}`
+      );
 
       return response.data;
     },
-    enabled: !!id,
+
+    enabled: Boolean(planId),
+
+    staleTime: 30 * 1000,
   });
 };
 
+
 /* =========================================================
    CREATE PLAN
+   POST /plans
 ========================================================= */
 
 export const useCreatePlan = () => {
@@ -45,91 +87,155 @@ export const useCreatePlan = () => {
 
   return useMutation({
     mutationFn: async (data) => {
-      const response = await api.post("/plans", data);
+      const response = await api.post(
+        "/plans",
+        data
+      );
 
       return response.data;
     },
 
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["plans"],
+        queryKey: PLAN_QUERY_KEYS.lists(),
       });
     },
   });
 };
 
+
 /* =========================================================
    UPDATE PLAN
+   PATCH /plans/:id
 ========================================================= */
 
 export const useUpdatePlan = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }) => {
-      const response = await api.put(`/plans/${id}`, data);
+    mutationFn: async ({
+      planId,
+      data,
+    }) => {
+      const response = await api.patch(
+        `/plans/${planId}`,
+        data
+      );
 
       return response.data;
     },
 
-    onSuccess: (response, variables) => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["plans"],
+        queryKey: PLAN_QUERY_KEYS.lists(),
       });
 
       queryClient.invalidateQueries({
-        queryKey: ["plan", variables.id],
+        queryKey: PLAN_QUERY_KEYS.detail(
+          variables.planId
+        ),
       });
     },
   });
 };
 
+
 /* =========================================================
    UPDATE PLAN STATUS
+   PATCH /plans/:id/status
 ========================================================= */
 
 export const useUpdatePlanStatus = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, status }) => {
-      const response = await api.patch(`/plans/${id}/status`, {
-        status,
-      });
+    mutationFn: async ({
+      planId,
+      status,
+    }) => {
+      const response = await api.patch(
+        `/plans/${planId}/status`,
+        {
+          status,
+        }
+      );
 
       return response.data;
     },
 
-    onSuccess: (response, variables) => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["plans"],
+        queryKey: PLAN_QUERY_KEYS.lists(),
       });
 
       queryClient.invalidateQueries({
-        queryKey: ["plan", variables.id],
+        queryKey: PLAN_QUERY_KEYS.detail(
+          variables.planId
+        ),
       });
     },
   });
 };
 
+
 /* =========================================================
    DELETE PLAN
+   DELETE /plans/:id
 ========================================================= */
 
 export const useDeletePlan = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id) => {
-      const response = await api.delete(`/plans/${id}`);
+    mutationFn: async (planId) => {
+      const response = await api.delete(
+        `/plans/${planId}`
+      );
 
       return response.data;
     },
 
-    onSuccess: () => {
+    onSuccess: (_, planId) => {
       queryClient.invalidateQueries({
-        queryKey: ["plans"],
+        queryKey: PLAN_QUERY_KEYS.lists(),
+      });
+
+      queryClient.removeQueries({
+        queryKey: PLAN_QUERY_KEYS.detail(planId),
       });
     },
   });
+};
+
+
+/* =========================================================
+   PLAN ACTIONS
+========================================================= */
+
+export const usePlanActions = () => {
+  const queryClient = useQueryClient();
+
+  const refreshPlans = () => {
+    return queryClient.invalidateQueries({
+      queryKey: PLAN_QUERY_KEYS.lists(),
+    });
+  };
+
+  const refreshPlan = (planId) => {
+    return queryClient.invalidateQueries({
+      queryKey: PLAN_QUERY_KEYS.detail(planId),
+    });
+  };
+
+  const clearPlanCache = () => {
+    return queryClient.removeQueries({
+      queryKey: PLAN_QUERY_KEYS.all,
+    });
+  };
+
+  return {
+    refreshPlans,
+    refreshPlan,
+    clearPlanCache,
+  };
 };

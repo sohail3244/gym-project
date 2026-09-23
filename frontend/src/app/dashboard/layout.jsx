@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import DashboardNavbar from "@/components/DashboardNavbar";
 import Sidebar from "@/components/Sidebar";
 import DashboardGuard from "@/components/DashboardGuard";
+import { useMe } from "@/lib/hooks/useAuth";
 
 export default function DashboardLayout({ children }) {
   const pathname = usePathname();
@@ -14,6 +15,9 @@ export default function DashboardLayout({ children }) {
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { data: meResponse } = useMe();
+
+  const user = meResponse?.data?.user;
 
   /**
    * Responsive breakpoint handling
@@ -101,11 +105,11 @@ export default function DashboardLayout({ children }) {
             Dashboard Navbar
         ================================= */}
         <DashboardNavbar
-  onToggleSidebar={toggleSidebar}
-  sidebarOpen={sidebarOpen}
-  isMobile={isMobile}
-  isCollapsed={isCollapsed}
-/>
+          onToggleSidebar={toggleSidebar}
+          sidebarOpen={sidebarOpen}
+          isMobile={isMobile}
+          isCollapsed={isCollapsed}
+        />
 
         {/* ================================
             Mobile / Tablet Overlay
@@ -129,13 +133,14 @@ export default function DashboardLayout({ children }) {
             Sidebar
         ================================= */}
         <Sidebar
-  isOpen={sidebarOpen}
-  isCollapsed={isCollapsed}
-  onClose={closeSidebar}
-  onToggleCollapse={() => setIsCollapsed(prev => !prev)}
-  isMobile={isMobile}
-  isTablet={isTablet}
-/>
+          isOpen={sidebarOpen}
+          isCollapsed={isCollapsed}
+          onClose={closeSidebar}
+          onToggleCollapse={() => setIsCollapsed(prev => !prev)}
+          isMobile={isMobile}
+          isTablet={isTablet}
+          role={user?.role}
+        />
 
         {/* ================================
             Main Content

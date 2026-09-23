@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+
 import {
   Plus,
   CreditCard,
@@ -10,35 +11,118 @@ import {
 
 import Button from "@/components/ui/Button";
 import BusinessPlanTable from "@/components/table/BusinessPlanTable";
+import PlanModal from "@/components/modals/PlanModal";
+import { useCreatePlan, usePlans } from "@/lib/hooks/usePlans";
+
+
 
 export default function PlansPage() {
-  const [showCreateModal, setShowCreateModal] =
-    useState(false);
+  /* =====================================================
+     MODAL STATE
+  ===================================================== */
 
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  /* =====================================================
+     GET PLANS
+  ===================================================== */
+
+  const {
+    data: plansResponse,
+    isLoading: plansLoading,
+    isError: plansError,
+    error: plansErrorData,
+  } = usePlans();
+
+  /* =====================================================
+     CREATE PLAN
+  ===================================================== */
+
+  const createPlanMutation = useCreatePlan();
+
+  /* =====================================================
+     NORMALIZE PLANS RESPONSE
+     
+     Backend response:
+     {
+       success: true,
+       data: {
+         plans: []
+       }
+     }
+  ===================================================== */
+
+  const plans = Array.isArray(plansResponse?.data?.plans)
+    ? plansResponse.data.plans
+    : [];
+
+  /* =====================================================
+     PLAN ACTIONS
+  ===================================================== */
 
   const handleView = (plan) => {
     console.log("View Plan:", plan);
   };
 
-
   const handleEdit = (plan) => {
     console.log("Edit Plan:", plan);
   };
-
 
   const handleDelete = (plan) => {
     console.log("Delete Plan:", plan);
   };
 
+  /* =====================================================
+     CREATE PLAN HANDLER
+  ===================================================== */
+
+  const handleCreatePlan = async (payload) => {
+    try {
+      await createPlanMutation.mutateAsync(payload);
+
+      setShowCreateModal(false);
+    } catch (error) {
+      console.error("Create Plan Error:", error);
+    }
+  };
+
+  /* =====================================================
+     SUMMARY DATA
+  ===================================================== */
+
+  const totalPlans = plans.length;
+
+  const activePlans = plans.filter(
+    (plan) => plan.status === "ACTIVE"
+  ).length;
+
+  const prices = plans
+    .map((plan) => Number(plan.price))
+    .filter((price) => Number.isFinite(price));
+
+  const startingPrice =
+    prices.length > 0 ? Math.min(...prices) : 0;
+
+  /* =====================================================
+     RENDER
+  ===================================================== */
 
   return (
     <main className="min-h-screen bg-background">
-
-      <div className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
-
-        {/* ==================================================
+      <div
+        className="
+          mx-auto
+          w-full
+          max-w-[1600px]
+          space-y-6
+          p-4
+          sm:p-6
+          lg:p-8
+        "
+      >
+        {/* =================================================
             PAGE HEADER
-        =================================================== */}
+        ================================================= */}
 
         <div
           className="
@@ -50,10 +134,11 @@ export default function PlansPage() {
             sm:justify-between
           "
         >
+          {/* PAGE TITLE */}
 
           <div>
-
             <div className="flex items-center gap-2">
+              {/* ICON */}
 
               <div
                 className="
@@ -70,8 +155,9 @@ export default function PlansPage() {
                 <CreditCard size={20} />
               </div>
 
-              <div>
+              {/* TITLE */}
 
+              <div>
                 <h1
                   className="
                     text-xl
@@ -87,32 +173,47 @@ export default function PlansPage() {
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   Manage subscription plans for your businesses.
                 </p>
-
               </div>
-
             </div>
-
           </div>
-
 
           {/* CREATE BUTTON */}
 
           <Button
             type="button"
             icon={Plus}
-            onClick={() =>
-              setShowCreateModal(true)
-            }
+            iconPosition="left"
+            onClick={() => setShowCreateModal(true)}
           >
             Create Plan
           </Button>
-
         </div>
 
+        {/* =================================================
+            ERROR MESSAGE
+        ================================================= */}
 
-        {/* ==================================================
+        {plansError && (
+          <div
+            className="
+              rounded-xl
+              border
+              border-destructive/20
+              bg-destructive/10
+              p-4
+              text-sm
+              text-destructive
+            "
+          >
+            {plansErrorData?.response?.data?.message ||
+              plansErrorData?.message ||
+              "Failed to load plans."}
+          </div>
+        )}
+
+        {/* =================================================
             SUMMARY CARDS
-        =================================================== */}
+        ================================================= */}
 
         <div
           className="
@@ -123,8 +224,9 @@ export default function PlansPage() {
             lg:grid-cols-3
           "
         >
-
-          {/* TOTAL PLANS */}
+          {/* =================================================
+              TOTAL PLANS
+          ================================================= */}
 
           <div
             className="
@@ -136,19 +238,30 @@ export default function PlansPage() {
               shadow-sm
             "
           >
-
             <div className="flex items-center justify-between">
-
               <div>
-
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p
+                  className="
+                    text-xs
+                    font-medium
+                    uppercase
+                    tracking-wide
+                    text-muted-foreground
+                  "
+                >
                   Total Plans
                 </p>
 
-                <p className="mt-2 text-2xl font-bold text-foreground">
-                  6
+                <p
+                  className="
+                    mt-2
+                    text-2xl
+                    font-bold
+                    text-foreground
+                  "
+                >
+                  {plansLoading ? "..." : totalPlans}
                 </p>
-
               </div>
 
               <div
@@ -165,13 +278,12 @@ export default function PlansPage() {
               >
                 <Layers3 size={19} />
               </div>
-
             </div>
-
           </div>
 
-
-          {/* ACTIVE PLANS */}
+          {/* =================================================
+              ACTIVE PLANS
+          ================================================= */}
 
           <div
             className="
@@ -183,19 +295,30 @@ export default function PlansPage() {
               shadow-sm
             "
           >
-
             <div className="flex items-center justify-between">
-
               <div>
-
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p
+                  className="
+                    text-xs
+                    font-medium
+                    uppercase
+                    tracking-wide
+                    text-muted-foreground
+                  "
+                >
                   Active Plans
                 </p>
 
-                <p className="mt-2 text-2xl font-bold text-foreground">
-                  4
+                <p
+                  className="
+                    mt-2
+                    text-2xl
+                    font-bold
+                    text-foreground
+                  "
+                >
+                  {plansLoading ? "..." : activePlans}
                 </p>
-
               </div>
 
               <div
@@ -213,13 +336,12 @@ export default function PlansPage() {
               >
                 <CheckCircle2 size={19} />
               </div>
-
             </div>
-
           </div>
 
-
-          {/* MONTHLY REVENUE EXAMPLE */}
+          {/* =================================================
+              STARTING PRICE
+          ================================================= */}
 
           <div
             className="
@@ -231,19 +353,32 @@ export default function PlansPage() {
               shadow-sm
             "
           >
-
             <div className="flex items-center justify-between">
-
               <div>
-
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p
+                  className="
+                    text-xs
+                    font-medium
+                    uppercase
+                    tracking-wide
+                    text-muted-foreground
+                  "
+                >
                   Starting Price
                 </p>
 
-                <p className="mt-2 text-2xl font-bold text-foreground">
-                  ₹499
+                <p
+                  className="
+                    mt-2
+                    text-2xl
+                    font-bold
+                    text-foreground
+                  "
+                >
+                  {plansLoading
+                    ? "..."
+                    : `₹${startingPrice.toLocaleString("en-IN")}`}
                 </p>
-
               </div>
 
               <div
@@ -260,101 +395,50 @@ export default function PlansPage() {
               >
                 <CreditCard size={19} />
               </div>
-
             </div>
-
           </div>
-
         </div>
 
-
-        {/* ==================================================
+        {/* =================================================
             PLAN TABLE
-        =================================================== */}
+        ================================================= */}
 
-        <BusinessPlanTable
-          onView={handleView}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
-
-      </div>
-
-
-      {/* ====================================================
-          CREATE PLAN MODAL
-      ===================================================== */}
-
-      {showCreateModal && (
         <div
           className="
-            fixed
-            inset-0
-            z-50
-            flex
-            items-center
-            justify-center
-            bg-black/40
-            p-4
-            backdrop-blur-sm
+            overflow-hidden
+            rounded-2xl
+            border
+            border-border
+            bg-card
+            shadow-sm
           "
-          onClick={() =>
-            setShowCreateModal(false)
-          }
         >
-
-          <div
-            className="
-              w-full
-              max-w-lg
-              rounded-2xl
-              border
-              border-border
-              bg-background
-              p-6
-              shadow-2xl
-            "
-            onClick={(event) =>
-              event.stopPropagation()
-            }
-          >
-
-            <h2 className="text-lg font-bold text-foreground">
-              Create Business Plan
-            </h2>
-
-            <p className="mt-1 text-sm text-muted-foreground">
-              Plan creation form will be connected here.
-            </p>
-
-            <div className="mt-6 flex justify-end gap-3">
-
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() =>
-                  setShowCreateModal(false)
-                }
-              >
-                Cancel
-              </Button>
-
-              <Button
-                type="button"
-                onClick={() =>
-                  setShowCreateModal(false)
-                }
-              >
-                Continue
-              </Button>
-
-            </div>
-
-          </div>
-
+          <BusinessPlanTable
+            plans={plans}
+            loading={plansLoading}
+            onView={handleView}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
         </div>
-      )}
+      </div>
 
+      {/* ===================================================
+          CREATE PLAN MODAL
+      =================================================== */}
+
+      <PlanModal
+        isOpen={showCreateModal}
+        onClose={() => {
+          if (!createPlanMutation.isPending) {
+            setShowCreateModal(false);
+          }
+        }}
+        mode="create"
+        plan={null}
+        onSuccess={handleCreatePlan}
+        isLoading={createPlanMutation.isPending}
+      />
     </main>
   );
 }
