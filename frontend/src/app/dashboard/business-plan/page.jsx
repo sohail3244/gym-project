@@ -12,7 +12,12 @@ import {
 import Button from "@/components/ui/Button";
 import BusinessPlanTable from "@/components/table/BusinessPlanTable";
 import PlanModal from "@/components/modals/PlanModal";
-import { useCreatePlan, usePlans } from "@/lib/hooks/usePlans";
+import {
+  useCreatePlan,
+  usePlans,
+  useUpdatePlan,
+  useUpdatePlanStatus,
+} from "@/lib/hooks/usePlans";
 
 
 
@@ -21,7 +26,8 @@ export default function PlansPage() {
      MODAL STATE
   ===================================================== */
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState(null);
 
   /* =====================================================
      GET PLANS
@@ -38,7 +44,8 @@ export default function PlansPage() {
      CREATE PLAN
   ===================================================== */
 
-  const createPlanMutation = useCreatePlan();
+  const updatePlanMutation = useUpdatePlan();
+  const updatePlanStatusMutation = useUpdatePlanStatus();
 
   /* =====================================================
      NORMALIZE PLANS RESPONSE
@@ -65,11 +72,30 @@ export default function PlansPage() {
   };
 
   const handleEdit = (plan) => {
-    console.log("Edit Plan:", plan);
+    if (!plan?.id) return;
+
+    setSelectedPlan(plan);
+    setShowEditModal(true);
   };
 
   const handleDelete = (plan) => {
     console.log("Delete Plan:", plan);
+  };
+
+  const handleToggleStatus = async (plan) => {
+    if (!plan?.id) return;
+
+    const nextStatus =
+      plan.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+
+    try {
+      await updatePlanStatusMutation.mutateAsync({
+        planId: plan.id,
+        status: nextStatus,
+      });
+    } catch (error) {
+      console.error("Update Plan Status Error:", error);
+    }
   };
 
   /* =====================================================
@@ -83,6 +109,22 @@ export default function PlansPage() {
       setShowCreateModal(false);
     } catch (error) {
       console.error("Create Plan Error:", error);
+    }
+  };
+
+  const handleUpdatePlan = async (payload) => {
+    if (!selectedPlan?.id) return;
+
+    try {
+      await updatePlanMutation.mutateAsync({
+        planId: selectedPlan.id,
+        data: payload,
+      });
+
+      setShowEditModal(false);
+      setSelectedPlan(null);
+    } catch (error) {
+      console.error("Update Plan Error:", error);
     }
   };
 
@@ -419,6 +461,8 @@ export default function PlansPage() {
             onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onToggleStatus={handleToggleStatus}
+            statusLoading={updatePlanStatusMutation.isPending}
           />
         </div>
       </div>
@@ -428,16 +472,17 @@ export default function PlansPage() {
       =================================================== */}
 
       <PlanModal
-        isOpen={showCreateModal}
+        isOpen={showEditModal}
         onClose={() => {
-          if (!createPlanMutation.isPending) {
-            setShowCreateModal(false);
+          if (!updatePlanMutation.isPending) {
+            setShowEditModal(false);
+            setSelectedPlan(null);
           }
         }}
-        mode="create"
-        plan={null}
-        onSuccess={handleCreatePlan}
-        isLoading={createPlanMutation.isPending}
+        mode="edit"
+        plan={selectedPlan}
+        onSuccess={handleUpdatePlan}
+        isLoading={updatePlanMutation.isPending}
       />
     </main>
   );

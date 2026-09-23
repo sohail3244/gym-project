@@ -224,10 +224,9 @@ function StatusBadge({ status }) {
         py-1
         text-xs
         font-semibold
-        ${
-          isActive
-            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-            : "bg-muted text-muted-foreground"
+        ${isActive
+          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+          : "bg-muted text-muted-foreground"
         }
       `}
     >
@@ -247,7 +246,14 @@ function StatusBadge({ status }) {
 // ACTION MENU
 // ============================================================
 
-function ActionMenu({ plan, onView, onEdit, onDelete }) {
+function ActionMenu({
+  plan,
+  onView,
+  onEdit,
+  onDelete,
+  onToggleStatus,
+  statusLoading,
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -344,6 +350,41 @@ function ActionMenu({ plan, onView, onEdit, onDelete }) {
               type="button"
               onClick={() => {
                 setOpen(false);
+                onToggleStatus?.(plan);
+              }}
+              disabled={statusLoading}
+              className="
+    flex
+    w-full
+    items-center
+    gap-2
+    rounded-lg
+    px-3
+    py-2
+    text-sm
+    text-foreground
+    hover:bg-secondary
+    disabled:cursor-not-allowed
+    disabled:opacity-50
+  "
+            >
+              {plan.status === "ACTIVE" ? (
+                <>
+                  <XCircle size={15} />
+                  Deactivate
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 size={15} />
+                  Activate
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
                 onDelete?.(plan);
               }}
               className="
@@ -376,9 +417,12 @@ function ActionMenu({ plan, onView, onEdit, onDelete }) {
 
 export default function BusinessPlanTable({
   plans = dummyPlans,
+  loading = false,
   onView,
   onEdit,
   onDelete,
+  onToggleStatus,
+  statusLoading = false,
 }) {
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -903,6 +947,8 @@ export default function BusinessPlanTable({
                       onView={onView}
                       onEdit={onEdit}
                       onDelete={onDelete}
+                      onToggleStatus={onToggleStatus}
+                      statusLoading={statusLoading}
                     />
 
                   </TableCell>
