@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import {
   Table,
@@ -13,280 +13,105 @@ import {
 
 import SearchBar from "../ui/SearchBar";
 import StatusFilter from "../ui/StatusFilter";
-import DateFilter from "../ui/DateFilter";
 
 import {
-  MoreHorizontal,
   Eye,
   Pencil,
   Trash2,
   MoreVertical,
 } from "lucide-react";
 
-/* =========================================================
-   DUMMY EMPLOYEE DATA
-========================================================= */
-
-const dummyEmployees = [
-  {
-    id: "EMP001",
-    name: "Rahul Sharma",
-    username: "rahul.sharma",
-    email: "rahul@example.com",
-    mobileNumber: "9876543210",
-    staffType: "MANAGER",
-    designation: "Branch Manager",
-    status: "ACTIVE",
-    createdAt: "2026-08-25",
-  },
-  {
-    id: "EMP002",
-    name: "Amit Kumar",
-    username: "amit.kumar",
-    email: "amit@example.com",
-    mobileNumber: "9876543211",
-    staffType: "ACCOUNTANT",
-    designation: "Accountant",
-    status: "ACTIVE",
-    createdAt: "2026-08-22",
-  },
-  {
-    id: "EMP003",
-    name: "Priya Singh",
-    username: "priya.singh",
-    email: "priya@example.com",
-    mobileNumber: "9876543212",
-    staffType: "SUPPORT",
-    designation: "Customer Support",
-    status: "INACTIVE",
-    createdAt: "2026-08-18",
-  },
-  {
-    id: "EMP004",
-    name: "Vikas Verma",
-    username: "vikas.verma",
-    email: "vikas@example.com",
-    mobileNumber: "9876543213",
-    staffType: "SALES",
-    designation: "Sales Executive",
-    status: "ACTIVE",
-    createdAt: "2026-08-15",
-  },
-  {
-    id: "EMP005",
-    name: "Neha Gupta",
-    username: "neha.gupta",
-    email: "neha@example.com",
-    mobileNumber: "9876543214",
-    staffType: "STAFF",
-    designation: "Office Executive",
-    status: "ACTIVE",
-    createdAt: "2026-08-10",
-  },
-  {
-    id: "EMP006",
-    name: "Sandeep Yadav",
-    username: "sandeep.yadav",
-    email: "sandeep@example.com",
-    mobileNumber: "9876543215",
-    staffType: "MANAGER",
-    designation: "Operations Manager",
-    status: "SUSPENDED",
-    createdAt: "2026-08-05",
-  },
-  {
-    id: "EMP007",
-    name: "Pooja Mehta",
-    username: "pooja.mehta",
-    email: "pooja@example.com",
-    mobileNumber: "9876543216",
-    staffType: "SUPPORT",
-    designation: "Support Executive",
-    status: "ACTIVE",
-    createdAt: "2026-08-02",
-  },
-  {
-    id: "EMP008",
-    name: "Arjun Patel",
-    username: "arjun.patel",
-    email: "arjun@example.com",
-    mobileNumber: "9876543217",
-    staffType: "SALES",
-    designation: "Sales Executive",
-    status: "INACTIVE",
-    createdAt: "2026-07-28",
-  },
-  {
-    id: "EMP009",
-    name: "Karan Malhotra",
-    username: "karan.malhotra",
-    email: "karan@example.com",
-    mobileNumber: "9876543218",
-    staffType: "ACCOUNTANT",
-    designation: "Senior Accountant",
-    status: "ACTIVE",
-    createdAt: "2026-07-24",
-  },
-  {
-    id: "EMP010",
-    name: "Anjali Verma",
-    username: "anjali.verma",
-    email: "anjali@example.com",
-    mobileNumber: "9876543219",
-    staffType: "STAFF",
-    designation: "Office Assistant",
-    status: "ACTIVE",
-    createdAt: "2026-07-20",
-  },
-];
-
-/* =========================================================
-   COMPONENT
-========================================================= */
-
 export default function EmployeeTable({
-  employees = dummyEmployees,
-  total = employees.length,
+  employees = [],
+  pagination = {},
+  filters = {},
+  setFilters,
+  isLoading = false,
+  isFetching = false,
+  error = null,
   showSearch = true,
   showStatusFilter = true,
-  showDateFilter = true,
 }) {
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  /* =========================================================
+     PAGINATION DATA
+  ========================================================= */
 
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("ALL");
-  const [dateFilter, setDateFilter] = useState(null);
+  const page = pagination?.page || 1;
+  const rowsPerPage = pagination?.limit || 10;
+  const totalRows = pagination?.total || 0;
+  const totalPages = pagination?.totalPages || 1;
+
+  /* =========================================================
+     FILTER DATA
+  ========================================================= */
+
+  const search = filters?.search || "";
+  const status = filters?.status || "";
+
+  /* =========================================================
+     ACTION MENU
+  ========================================================= */
 
   const [openAction, setOpenAction] = useState(null);
-
-  /* =========================================================
-     FILTER EMPLOYEES
-  ========================================================= */
-
-  const filteredEmployees = useMemo(() => {
-    let result = [...employees];
-
-    /* -------------------------
-       SEARCH
-    ------------------------- */
-
-    if (search.trim()) {
-      const query = search.toLowerCase().trim();
-
-      result = result.filter((employee) =>
-        [
-          employee.name,
-          employee.username,
-          employee.email,
-          employee.mobileNumber,
-          employee.staffType,
-          employee.designation,
-        ]
-          .filter(Boolean)
-          .some((value) =>
-            String(value).toLowerCase().includes(query)
-          )
-      );
-    }
-
-    /* -------------------------
-       STATUS FILTER
-    ------------------------- */
-
-    if (status && status !== "ALL") {
-      result = result.filter(
-        (employee) => employee.status === status
-      );
-    }
-
-    /* -------------------------
-       DATE FILTER
-    ------------------------- */
-
-    if (dateFilter?.from || dateFilter?.to) {
-      result = result.filter((employee) => {
-        const employeeDate = new Date(employee.createdAt);
-
-        if (dateFilter.from) {
-          const fromDate = new Date(dateFilter.from);
-          fromDate.setHours(0, 0, 0, 0);
-
-          if (employeeDate < fromDate) {
-            return false;
-          }
-        }
-
-        if (dateFilter.to) {
-          const toDate = new Date(dateFilter.to);
-          toDate.setHours(23, 59, 59, 999);
-
-          if (employeeDate > toDate) {
-            return false;
-          }
-        }
-
-        return true;
-      });
-    }
-
-    return result;
-  }, [
-    employees,
-    search,
-    status,
-    dateFilter,
-  ]);
-
-  /* =========================================================
-     PAGINATION
-  ========================================================= */
-
-  const totalFilteredRows = filteredEmployees.length;
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(totalFilteredRows / rowsPerPage)
-  );
-
-  /*
-   * Agar filter lagane ke baad current page available
-   * na rahe to page 1 par aa jayega.
-   */
-  React.useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
-
-  const currentEmployees = filteredEmployees.slice(
-    (page - 1) * rowsPerPage,
-    page * rowsPerPage
-  );
 
   /* =========================================================
      HANDLERS
   ========================================================= */
 
   const handleRowsPerPageChange = (value) => {
-    setRowsPerPage(Number(value));
-    setPage(1);
+    setFilters((prev) => ({
+      ...prev,
+      page: 1,
+      limit: Number(value),
+    }));
   };
 
   const handleSearchChange = (value) => {
-    setSearch(value);
-    setPage(1);
+    setFilters((prev) => ({
+      ...prev,
+      page: 1,
+      search: value,
+    }));
   };
 
   const handleStatusChange = (value) => {
-    setStatus(value);
-    setPage(1);
+    setFilters((prev) => ({
+      ...prev,
+      page: 1,
+      status: value === "ALL" ? "" : value,
+    }));
   };
 
-  const handleDateChange = (value) => {
-    setDateFilter(value);
-    setPage(1);
+  const handlePageChange = (newPage) => {
+    setFilters((prev) => ({
+      ...prev,
+      page: newPage,
+    }));
   };
+
+  /* =========================================================
+     CLOSE ACTION MENU
+  ========================================================= */
+
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setOpenAction(null);
+    };
+
+    if (openAction) {
+      document.addEventListener(
+        "click",
+        handleClickOutside
+      );
+    }
+
+    return () => {
+      document.removeEventListener(
+        "click",
+        handleClickOutside
+      );
+    };
+  }, [openAction]);
 
   /* =========================================================
      STATUS STYLE
@@ -310,20 +135,25 @@ export default function EmployeeTable({
           dark:text-gray-400
         `;
 
-      case "SUSPENDED":
-        return `
-          bg-red-100
-          text-red-700
-          dark:bg-red-900/30
-          dark:text-red-400
-        `;
-
       default:
         return `
           bg-muted
           text-foreground
         `;
     }
+  };
+
+  /* =========================================================
+     STAFF TYPE LABEL
+  ========================================================= */
+
+  const getStaffTypeLabel = (type) => {
+    if (!type) return "-";
+
+    return type
+      .toLowerCase()
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
   /* =========================================================
@@ -335,11 +165,45 @@ export default function EmployeeTable({
       return "-";
     }
 
-    return new Date(date).toLocaleDateString("en-IN", {
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "-";
+    }
+
+    return parsedDate.toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "short",
       year: "numeric",
     });
+  };
+
+  /* =========================================================
+     ACTION HANDLERS
+  ========================================================= */
+
+  const handleView = (employee) => {
+    setOpenAction(null);
+
+    console.log("View Employee:", employee);
+
+    // Yaha future me view modal/page open kar sakte ho
+  };
+
+  const handleEdit = (employee) => {
+    setOpenAction(null);
+
+    console.log("Edit Employee:", employee);
+
+    // Yaha future me edit modal open kar sakte ho
+  };
+
+  const handleDelete = (employee) => {
+    setOpenAction(null);
+
+    console.log("Delete Employee:", employee);
+
+    // Yaha future me delete confirmation modal open kar sakte ho
   };
 
   /* =========================================================
@@ -348,15 +212,12 @@ export default function EmployeeTable({
 
   return (
     <div className="space-y-4">
-
       {/* =====================================================
           FILTER SECTION
       ====================================================== */}
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-
         <div className="flex flex-1 flex-col gap-3 sm:flex-row">
-
           {/* SEARCH */}
 
           {showSearch && (
@@ -369,28 +230,25 @@ export default function EmployeeTable({
             </div>
           )}
 
-          {/* STATUS + DATE */}
+          {/* STATUS FILTER */}
 
-          <div className="flex flex-wrap gap-3">
-
-            {showStatusFilter && (
+          {showStatusFilter && (
+            <div className="flex flex-wrap gap-3">
               <StatusFilter
-                value={status}
+                value={status || "ALL"}
                 onChange={handleStatusChange}
               />
-            )}
-
-            {showDateFilter && (
-              <DateFilter
-                value={dateFilter}
-                onChange={handleDateChange}
-              />
-            )}
-
-          </div>
-
+            </div>
+          )}
         </div>
 
+        {/* FETCHING INDICATOR */}
+
+        {isFetching && !isLoading && (
+          <div className="text-xs text-muted-foreground">
+            Updating...
+          </div>
+        )}
       </div>
 
       {/* =====================================================
@@ -398,16 +256,14 @@ export default function EmployeeTable({
       ====================================================== */}
 
       <div className="overflow-hidden rounded-xl border border-border bg-background">
-
         <Table>
-
           {/* =================================================
               HEADER
           ================================================== */}
 
           <TableHeader>
-
             <TableRow>
+              {/* INDEX */}
 
               <TableCell
                 header
@@ -416,29 +272,43 @@ export default function EmployeeTable({
                 #
               </TableCell>
 
+              {/* EMPLOYEE */}
+
               <TableCell header>
                 Employee
               </TableCell>
+
+              {/* EMPLOYEE TYPE */}
 
               <TableCell header>
                 Employee Type
               </TableCell>
 
+              {/* DESIGNATION */}
+
               <TableCell header>
                 Designation
               </TableCell>
+
+              {/* MOBILE */}
 
               <TableCell header>
                 Mobile
               </TableCell>
 
+              {/* STATUS */}
+
               <TableCell header>
                 Status
               </TableCell>
 
+              {/* JOINED */}
+
               <TableCell header>
                 Joined
               </TableCell>
+
+              {/* ACTIONS */}
 
               <TableCell
                 header
@@ -446,9 +316,7 @@ export default function EmployeeTable({
               >
                 Actions
               </TableCell>
-
             </TableRow>
-
           </TableHeader>
 
           {/* =================================================
@@ -456,37 +324,83 @@ export default function EmployeeTable({
           ================================================== */}
 
           <TableBody>
+            {/* ================= LOADING ================= */}
 
-            {currentEmployees.length === 0 ? (
-
+            {isLoading ? (
               <TableRow>
-
                 <TableCell
                   colSpan={8}
                   align="center"
                   className="py-12"
                 >
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
 
-                  <div className="text-sm text-muted-foreground">
-                    No employees found.
+                    <span className="text-sm text-muted-foreground">
+                      Loading employees...
+                    </span>
                   </div>
-
                 </TableCell>
-
               </TableRow>
+            ) : /* ================= ERROR ================= */
 
+            error ? (
+              <TableRow>
+                <TableCell
+                  colSpan={8}
+                  align="center"
+                  className="py-12"
+                >
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-red-600">
+                      Failed to load employees.
+                    </p>
+
+                    <p className="text-xs text-muted-foreground">
+                      Please try again.
+                    </p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : /* ================= EMPTY ================= */
+
+            employees.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={8}
+                  align="center"
+                  className="py-12"
+                >
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">
+                      No employees found.
+                    </p>
+
+                    {search || status ? (
+                      <p className="text-xs text-muted-foreground">
+                        Try changing your search or filters.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Add your first employee to get started.
+                      </p>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
             ) : (
+              /* ================= EMPLOYEES ================= */
 
-              currentEmployees.map((employee, index) => (
-
+              employees.map((employee, index) => (
                 <TableRow key={employee.id}>
-
                   {/* =========================================
                       INDEX
                   ========================================== */}
 
                   <TableCell>
-                    {(page - 1) * rowsPerPage + index + 1}
+                    {(page - 1) * rowsPerPage +
+                      index +
+                      1}
                   </TableCell>
 
                   {/* =========================================
@@ -494,11 +408,9 @@ export default function EmployeeTable({
                   ========================================== */}
 
                   <TableCell>
-
                     <div className="min-w-0">
-
                       <p className="truncate font-medium text-foreground">
-                        {employee.name}
+                        {employee.name || "-"}
                       </p>
 
                       {employee.username && (
@@ -512,9 +424,7 @@ export default function EmployeeTable({
                           {employee.email}
                         </p>
                       )}
-
                     </div>
-
                   </TableCell>
 
                   {/* =========================================
@@ -522,11 +432,11 @@ export default function EmployeeTable({
                   ========================================== */}
 
                   <TableCell>
-
                     <span className="text-sm font-medium text-foreground">
-                      {employee.staffType || "-"}
+                      {getStaffTypeLabel(
+                        employee.staffType
+                      )}
                     </span>
-
                   </TableCell>
 
                   {/* =========================================
@@ -534,7 +444,9 @@ export default function EmployeeTable({
                   ========================================== */}
 
                   <TableCell>
-                    {employee.designation || "-"}
+                    <span className="text-sm text-foreground">
+                      {employee.designation || "-"}
+                    </span>
                   </TableCell>
 
                   {/* =========================================
@@ -542,7 +454,9 @@ export default function EmployeeTable({
                   ========================================== */}
 
                   <TableCell>
-                    {employee.mobileNumber || "-"}
+                    <span className="text-sm text-foreground">
+                      {employee.mobileNumber || "-"}
+                    </span>
                   </TableCell>
 
                   {/* =========================================
@@ -550,7 +464,6 @@ export default function EmployeeTable({
                   ========================================== */}
 
                   <TableCell>
-
                     <span
                       className={`
                         inline-flex
@@ -562,9 +475,8 @@ export default function EmployeeTable({
                         ${getStatusClass(employee.status)}
                       `}
                     >
-                      {employee.status}
+                      {employee.status || "-"}
                     </span>
-
                   </TableCell>
 
                   {/* =========================================
@@ -572,7 +484,9 @@ export default function EmployeeTable({
                   ========================================== */}
 
                   <TableCell>
-                    {formatDate(employee.createdAt)}
+                    <span className="text-sm text-foreground">
+                      {formatDate(employee.createdAt)}
+                    </span>
                   </TableCell>
 
                   {/* =========================================
@@ -580,20 +494,25 @@ export default function EmployeeTable({
                   ========================================== */}
 
                   <TableCell align="right">
-
-                    <div className="relative inline-block">
-
+                    <div
+                      className="relative inline-block"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                      }}
+                    >
                       {/* THREE DOT BUTTON */}
 
                       <button
                         type="button"
-                        onClick={() =>
+                        onClick={(event) => {
+                          event.stopPropagation();
+
                           setOpenAction(
                             openAction === employee.id
                               ? null
                               : employee.id
-                          )
-                        }
+                          );
+                        }}
                         aria-label="Employee actions"
                         className="
                           flex
@@ -615,7 +534,6 @@ export default function EmployeeTable({
                       {/* ACTION MENU */}
 
                       {openAction === employee.id && (
-
                         <div
                           className="
                             absolute
@@ -632,19 +550,13 @@ export default function EmployeeTable({
                             shadow-lg
                           "
                         >
-
                           {/* VIEW */}
 
                           <button
                             type="button"
-                            onClick={() => {
-                              setOpenAction(null);
-
-                              console.log(
-                                "View Employee:",
-                                employee
-                              );
-                            }}
+                            onClick={() =>
+                              handleView(employee)
+                            }
                             className="
                               flex
                               w-full
@@ -659,27 +571,20 @@ export default function EmployeeTable({
                               hover:bg-secondary
                             "
                           >
-
                             <Eye size={15} />
 
                             <span>
                               View
                             </span>
-
                           </button>
 
                           {/* EDIT */}
 
                           <button
                             type="button"
-                            onClick={() => {
-                              setOpenAction(null);
-
-                              console.log(
-                                "Edit Employee:",
-                                employee
-                              );
-                            }}
+                            onClick={() =>
+                              handleEdit(employee)
+                            }
                             className="
                               flex
                               w-full
@@ -694,27 +599,20 @@ export default function EmployeeTable({
                               hover:bg-secondary
                             "
                           >
-
                             <Pencil size={15} />
 
                             <span>
                               Edit
                             </span>
-
                           </button>
 
                           {/* DELETE */}
 
                           <button
                             type="button"
-                            onClick={() => {
-                              setOpenAction(null);
-
-                              console.log(
-                                "Delete Employee:",
-                                employee
-                              );
-                            }}
+                            onClick={() =>
+                              handleDelete(employee)
+                            }
                             className="
                               flex
                               w-full
@@ -730,29 +628,19 @@ export default function EmployeeTable({
                               dark:hover:bg-red-950/30
                             "
                           >
-
                             <Trash2 size={15} />
 
                             <span>
                               Delete
                             </span>
-
                           </button>
-
                         </div>
-
                       )}
-
                     </div>
-
                   </TableCell>
-
                 </TableRow>
-
               ))
-
             )}
-
           </TableBody>
 
           {/* =================================================
@@ -760,33 +648,24 @@ export default function EmployeeTable({
           ================================================== */}
 
           <tfoot>
-
             <tr>
-
               <td colSpan={8}>
-
                 <TablePagination
                   page={page}
                   totalPages={totalPages}
-                  totalRows={totalFilteredRows}
+                  totalRows={totalRows}
                   selectedRows={0}
                   rowsPerPage={rowsPerPage}
-                  onPageChange={setPage}
+                  onPageChange={handlePageChange}
                   onRowsPerPageChange={
                     handleRowsPerPageChange
                   }
                 />
-
               </td>
-
             </tr>
-
           </tfoot>
-
         </Table>
-
       </div>
-
     </div>
   );
 }
