@@ -12,6 +12,7 @@ import {
 import Button from "@/components/ui/Button";
 import BusinessPlanTable from "@/components/table/BusinessPlanTable";
 import PlanModal from "@/components/modals/PlanModal";
+
 import {
   useCreatePlan,
   usePlans,
@@ -19,15 +20,19 @@ import {
   useUpdatePlanStatus,
 } from "@/lib/hooks/usePlans";
 
-
-
 export default function PlansPage() {
   /* =====================================================
      MODAL STATE
   ===================================================== */
 
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [showCreateModal, setShowCreateModal] =
+    useState(false);
+
+  const [showEditModal, setShowEditModal] =
+    useState(false);
+
+  const [selectedPlan, setSelectedPlan] =
+    useState(null);
 
   /* =====================================================
      GET PLANS
@@ -41,16 +46,21 @@ export default function PlansPage() {
   } = usePlans();
 
   /* =====================================================
-     CREATE PLAN
+     PLAN MUTATIONS
   ===================================================== */
 
+  const createPlanMutation = useCreatePlan();
+
   const updatePlanMutation = useUpdatePlan();
-  const updatePlanStatusMutation = useUpdatePlanStatus();
+
+  const updatePlanStatusMutation =
+    useUpdatePlanStatus();
 
   /* =====================================================
      NORMALIZE PLANS RESPONSE
-     
+
      Backend response:
+
      {
        success: true,
        data: {
@@ -59,7 +69,9 @@ export default function PlansPage() {
      }
   ===================================================== */
 
-  const plans = Array.isArray(plansResponse?.data?.plans)
+  const plans = Array.isArray(
+    plansResponse?.data?.plans
+  )
     ? plansResponse.data.plans
     : [];
 
@@ -86,7 +98,9 @@ export default function PlansPage() {
     if (!plan?.id) return;
 
     const nextStatus =
-      plan.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+      plan.status === "ACTIVE"
+        ? "INACTIVE"
+        : "ACTIVE";
 
     try {
       await updatePlanStatusMutation.mutateAsync({
@@ -94,7 +108,10 @@ export default function PlansPage() {
         status: nextStatus,
       });
     } catch (error) {
-      console.error("Update Plan Status Error:", error);
+      console.error(
+        "Update Plan Status Error:",
+        error
+      );
     }
   };
 
@@ -104,13 +121,22 @@ export default function PlansPage() {
 
   const handleCreatePlan = async (payload) => {
     try {
-      await createPlanMutation.mutateAsync(payload);
+      await createPlanMutation.mutateAsync(
+        payload
+      );
 
       setShowCreateModal(false);
     } catch (error) {
-      console.error("Create Plan Error:", error);
+      console.error(
+        "Create Plan Error:",
+        error
+      );
     }
   };
+
+  /* =====================================================
+     UPDATE PLAN HANDLER
+  ===================================================== */
 
   const handleUpdatePlan = async (payload) => {
     if (!selectedPlan?.id) return;
@@ -124,7 +150,10 @@ export default function PlansPage() {
       setShowEditModal(false);
       setSelectedPlan(null);
     } catch (error) {
-      console.error("Update Plan Error:", error);
+      console.error(
+        "Update Plan Error:",
+        error
+      );
     }
   };
 
@@ -140,10 +169,14 @@ export default function PlansPage() {
 
   const prices = plans
     .map((plan) => Number(plan.price))
-    .filter((price) => Number.isFinite(price));
+    .filter((price) =>
+      Number.isFinite(price)
+    );
 
   const startingPrice =
-    prices.length > 0 ? Math.min(...prices) : 0;
+    prices.length > 0
+      ? Math.min(...prices)
+      : 0;
 
   /* =====================================================
      RENDER
@@ -213,7 +246,8 @@ export default function PlansPage() {
                 </h1>
 
                 <p className="mt-0.5 text-sm text-muted-foreground">
-                  Manage subscription plans for your businesses.
+                  Manage subscription plans for
+                  your businesses.
                 </p>
               </div>
             </div>
@@ -225,7 +259,9 @@ export default function PlansPage() {
             type="button"
             icon={Plus}
             iconPosition="left"
-            onClick={() => setShowCreateModal(true)}
+            onClick={() =>
+              setShowCreateModal(true)
+            }
           >
             Create Plan
           </Button>
@@ -247,7 +283,8 @@ export default function PlansPage() {
               text-destructive
             "
           >
-            {plansErrorData?.response?.data?.message ||
+            {plansErrorData?.response?.data
+              ?.message ||
               plansErrorData?.message ||
               "Failed to load plans."}
           </div>
@@ -302,7 +339,9 @@ export default function PlansPage() {
                     text-foreground
                   "
                 >
-                  {plansLoading ? "..." : totalPlans}
+                  {plansLoading
+                    ? "..."
+                    : totalPlans}
                 </p>
               </div>
 
@@ -359,7 +398,9 @@ export default function PlansPage() {
                     text-foreground
                   "
                 >
-                  {plansLoading ? "..." : activePlans}
+                  {plansLoading
+                    ? "..."
+                    : activePlans}
                 </p>
               </div>
 
@@ -419,7 +460,9 @@ export default function PlansPage() {
                 >
                   {plansLoading
                     ? "..."
-                    : `₹${startingPrice.toLocaleString("en-IN")}`}
+                    : `₹${startingPrice.toLocaleString(
+                        "en-IN"
+                      )}`}
                 </p>
               </div>
 
@@ -461,8 +504,12 @@ export default function PlansPage() {
             onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onToggleStatus={handleToggleStatus}
-            statusLoading={updatePlanStatusMutation.isPending}
+            onToggleStatus={
+              handleToggleStatus
+            }
+            statusLoading={
+              updatePlanStatusMutation.isPending
+            }
           />
         </div>
       </div>
@@ -472,9 +519,32 @@ export default function PlansPage() {
       =================================================== */}
 
       <PlanModal
+        isOpen={showCreateModal}
+        onClose={() => {
+          if (
+            !createPlanMutation.isPending
+          ) {
+            setShowCreateModal(false);
+          }
+        }}
+        mode="create"
+        plan={null}
+        onSuccess={handleCreatePlan}
+        isLoading={
+          createPlanMutation.isPending
+        }
+      />
+
+      {/* ===================================================
+          EDIT PLAN MODAL
+      =================================================== */}
+
+      <PlanModal
         isOpen={showEditModal}
         onClose={() => {
-          if (!updatePlanMutation.isPending) {
+          if (
+            !updatePlanMutation.isPending
+          ) {
             setShowEditModal(false);
             setSelectedPlan(null);
           }
@@ -482,7 +552,9 @@ export default function PlansPage() {
         mode="edit"
         plan={selectedPlan}
         onSuccess={handleUpdatePlan}
-        isLoading={updatePlanMutation.isPending}
+        isLoading={
+          updatePlanMutation.isPending
+        }
       />
     </main>
   );

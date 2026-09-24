@@ -144,43 +144,54 @@ const generateRandomPassword = (
   ) {
     password +=
       characters[
-        randomBytes[i] %
-          characters.length
+      randomBytes[i] %
+      characters.length
       ];
   }
 
   return password;
 };
 
-const verifySuperAdmin = async (
-  superAdminId
-) => {
-  const superAdmin =
-    await prisma.user.findUnique({
-      where: {
-        id: superAdminId,
-      },
-    });
+const verifyAdminAccess = async (userId) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+  });
 
-  if (!superAdmin) {
-    throw new Error(
-      "Super Admin not found"
-    );
+  if (!user) {
+    throw new Error("User not found");
   }
 
-  if (
-    superAdmin.role !==
-    "SUPER_ADMIN"
-  ) {
+  if (!["ADMIN", "SUPER_ADMIN"].includes(user.role)) {
+    throw new Error("Access denied");
+  }
+
+  if (user.status !== "ACTIVE") {
+    throw new Error("User account is not active");
+  }
+
+  return user;
+};
+
+const verifySuperAdmin = async (superAdminId) => {
+  const superAdmin = await prisma.user.findUnique({
+    where: {
+      id: superAdminId,
+    },
+  });
+
+  if (!superAdmin) {
+    throw new Error("Super Admin not found");
+  }
+
+  if (superAdmin.role !== "SUPER_ADMIN") {
     throw new Error(
       "Only Super Admin can perform this action"
     );
   }
 
-  if (
-    superAdmin.status !==
-    "ACTIVE"
-  ) {
+  if (superAdmin.status !== "ACTIVE") {
     throw new Error(
       "Super Admin account is not active"
     );
@@ -721,13 +732,13 @@ const createAdmin = async ({
 
     payment: result.payment
       ? {
-          id:
-            result.payment.id,
-          amount:
-            result.payment.amount,
-          status:
-            result.payment.status,
-        }
+        id:
+          result.payment.id,
+        amount:
+          result.payment.amount,
+        status:
+          result.payment.status,
+      }
       : null,
 
     credentials: {
@@ -860,15 +871,24 @@ const getAllAdmins = async (
             orderBy: {
               createdAt: "desc",
             },
+
             take: 1,
+
             select: {
               id: true,
+              planId: true,
               status: true,
+              startDate: true,
+              endDate: true,
+              autoRenew: true,
+
               plan: {
                 select: {
                   id: true,
                   name: true,
                   price: true,
+                  billingInterval: true,
+                  durationInDays: true,
                 },
               },
             },
@@ -951,9 +971,12 @@ const getAdminById = async (
           orderBy: {
             createdAt: "desc",
           },
+
           take: 1,
+
           select: {
             id: true,
+            planId: true,
             status: true,
             startDate: true,
             endDate: true,
@@ -964,6 +987,8 @@ const getAdminById = async (
                 id: true,
                 name: true,
                 price: true,
+                billingInterval: true,
+                durationInDays: true,
               },
             },
           },
@@ -1009,10 +1034,6 @@ const getAdminById = async (
     password,
   };
 };
-
-/* -------------------------------------------------------------------------- */
-/* Update Admin                                                               */
-/* -------------------------------------------------------------------------- */
 
 const updateAdmin = async ({
   superAdminId,
@@ -1142,10 +1163,10 @@ const updateAdmin = async ({
     }
   }
 
-  
+
   const result = await prisma.$transaction(
     async (tx) => {
-      
+
       const updatedAdmin =
         await tx.user.update({
           where: {
@@ -1176,7 +1197,7 @@ const updateAdmin = async ({
           },
         });
 
-     
+
 
       const updatedBusiness =
         await tx.business.update({
@@ -1219,7 +1240,7 @@ const updateAdmin = async ({
           },
         });
 
-      
+
       let updatedSubscription = null;
 
       if (planId !== undefined) {
@@ -1276,18 +1297,16 @@ const updateAdmin = async ({
   return result;
 };
 
-
-
 const changeAdminStatus = async ({
   superAdminId,
   adminId,
   status,
 }) => {
-  
+
 
   await verifySuperAdmin(superAdminId);
 
-  
+
 
   const allowedStatuses = [
     "PENDING",
@@ -1353,7 +1372,7 @@ const changeAdminStatus = async ({
           },
         });
 
-      
+
       const subscription =
         existingAdmin.subscriptions?.[0];
 

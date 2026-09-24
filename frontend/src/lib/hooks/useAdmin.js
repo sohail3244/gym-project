@@ -106,12 +106,11 @@ export const useAdmins = (params = {}) => {
 
 export const useAdmin = (adminId) => {
   return useQuery({
-    queryKey:
-      ADMIN_QUERY_KEYS.detail(adminId),
+    queryKey: ADMIN_QUERY_KEYS.detail(adminId),
 
     queryFn: async () => {
       const response = await api.get(
-        `/admins/${adminId}`
+        `/admin/${adminId}`
       );
 
       return response.data;

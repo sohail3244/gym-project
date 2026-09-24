@@ -37,7 +37,7 @@ export const useStaff = (params = {}) => {
     queryKey: STAFF_QUERY_KEYS.list(params),
 
     queryFn: async () => {
-      const response = await api.get("/admin/staff", {
+      const response = await api.get("/staff", {
         params,
       });
 
@@ -60,7 +60,7 @@ export const useStaffById = (staffId) => {
 
     queryFn: async () => {
       const response = await api.get(
-        `/admin/staff/${staffId}`
+        `/staff/${staffId}`
       );
 
       return response.data;
@@ -82,7 +82,7 @@ export const useCreateStaff = () => {
   return useMutation({
     mutationFn: async (data) => {
       const response = await api.post(
-        "/admin/staff",
+        "/staff",
         data
       );
 
@@ -107,7 +107,7 @@ export const useUpdateStaff = () => {
   return useMutation({
     mutationFn: async ({ staffId, data }) => {
       const response = await api.patch(
-        `/admin/staff/${staffId}`,
+        `/staff/${staffId}`,
         data
       );
 
@@ -138,7 +138,7 @@ export const useUpdateStaffStatus = () => {
   return useMutation({
     mutationFn: async ({ staffId, status }) => {
       const response = await api.patch(
-        `/admin/staff/${staffId}/status`,
+        `/staff/${staffId}/status`,
         {
           status,
         }
@@ -171,7 +171,7 @@ export const useDeleteStaff = () => {
   return useMutation({
     mutationFn: async (staffId) => {
       const response = await api.delete(
-        `/admin/staff/${staffId}`
+        `/staff/${staffId}`
       );
 
       return response.data;

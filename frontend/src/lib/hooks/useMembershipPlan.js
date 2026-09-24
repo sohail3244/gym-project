@@ -47,7 +47,7 @@ export const useMembershipPlans = (params = {}) => {
     queryKey: MEMBERSHIP_PLAN_QUERY_KEYS.list(params),
 
     queryFn: async () => {
-      const response = await api.get("/admin/membership-plans", {
+      const response = await api.get("/membership-plans", {
         params,
       });
 
@@ -72,7 +72,7 @@ export const useMembershipPlan = (planId) => {
 
     queryFn: async () => {
       const response = await api.get(
-        `/admin/membership-plans/${planId}`
+        `/membership-plans/${planId}`
       );
 
       return response.data;
@@ -96,7 +96,7 @@ export const useCreateMembershipPlan = () => {
   return useMutation({
     mutationFn: async (data) => {
       const response = await api.post(
-        "/admin/membership-plans",
+        "/membership-plans",
         data
       );
 
@@ -123,7 +123,7 @@ export const useUpdateMembershipPlan = () => {
   return useMutation({
     mutationFn: async ({ planId, data }) => {
       const response = await api.patch(
-        `/admin/membership-plans/${planId}`,
+        `/membership-plans/${planId}`,
         data
       );
 
@@ -157,7 +157,7 @@ export const useUpdateMembershipPlanStatus = () => {
   return useMutation({
     mutationFn: async ({ planId, status }) => {
       const response = await api.patch(
-        `/admin/membership-plans/${planId}/status`,
+        `/membership-plans/${planId}/status`,
         {
           status,
         }
@@ -193,7 +193,7 @@ export const useDeleteMembershipPlan = () => {
   return useMutation({
     mutationFn: async (planId) => {
       const response = await api.delete(
-        `/admin/membership-plans/${planId}`
+        `/membership-plans/${planId}`
       );
 
       return response.data;

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo } from "react";
+
 import {
   Table,
   TableHeader,
@@ -14,431 +15,531 @@ import SearchBar from "../ui/SearchBar";
 import StatusFilter from "../ui/StatusFilter";
 import DateFilter from "../ui/DateFilter";
 
+
 export default function EmployeeAttendanceTable({
   attendance = [],
   total = 0,
+
+  page = 1,
+  rowsPerPage = 10,
+
+  isLoading = false,
+  isFetching = false,
+
+  onPageChange,
+  onRowsPerPageChange,
+
+  onSearchChange,
+  onStatusChange,
+  onDateChange,
 }) {
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("ALL");
-  const [date, setDate] = useState("");
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(total / rowsPerPage)
-  );
-
-  const handleRowsPerPageChange = (value) => {
-    setRowsPerPage(Number(value));
-    setPage(1);
-  };
+  /* =========================================================
+     FORMAT DATE
+  ========================================================= */
 
   const formatDate = (value) => {
     if (!value) return "-";
 
-    return new Date(value).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+    const parsedDate = new Date(value);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "-";
+    }
+
+    return parsedDate.toLocaleDateString(
+      "en-IN",
+      {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }
+    );
   };
+
+
+  /* =========================================================
+     FORMAT TIME
+  ========================================================= */
 
   const formatTime = (value) => {
     if (!value) return "-";
 
-    return new Date(value).toLocaleTimeString("en-IN", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
+    const parsedDate = new Date(value);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "-";
+    }
+
+    return parsedDate.toLocaleTimeString(
+      "en-IN",
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      }
+    );
   };
+
+
+  /* =========================================================
+     STATUS CLASS
+  ========================================================= */
 
   const getStatusClass = (value) => {
     switch (value) {
       case "PRESENT":
-        return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+        return `
+          bg-green-100
+          text-green-700
+          dark:bg-green-900/30
+          dark:text-green-400
+        `;
 
       case "ABSENT":
-        return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+        return `
+          bg-red-100
+          text-red-700
+          dark:bg-red-900/30
+          dark:text-red-400
+        `;
 
       case "LATE":
-        return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
+        return `
+          bg-yellow-100
+          text-yellow-700
+          dark:bg-yellow-900/30
+          dark:text-yellow-400
+        `;
 
       case "HALF_DAY":
-        return "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400";
+        return `
+          bg-orange-100
+          text-orange-700
+          dark:bg-orange-900/30
+          dark:text-orange-400
+        `;
 
       case "LEAVE":
-        return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
+        return `
+          bg-blue-100
+          text-blue-700
+          dark:bg-blue-900/30
+          dark:text-blue-400
+        `;
 
       default:
         return "bg-muted text-foreground";
     }
   };
 
-  /*
-   * Dummy data fallback
-   * API data nahi aane par testing ke liye use hoga.
-   */
-  const dummyAttendance = [
-    {
-      id: "attendance-1",
-      attendanceDate: "2026-08-30T00:00:00.000Z",
-      checkIn: "2026-08-30T09:05:00.000Z",
-      checkOut: "2026-08-30T18:10:00.000Z",
-      status: "PRESENT",
-      notes: "Regular attendance",
-      staff: {
-        id: "staff-1",
-        name: "Rahul Sharma",
-        username: "rahul",
-        mobileNumber: "9876543210",
-        designation: "Manager",
-      },
-    },
-    {
-      id: "attendance-2",
-      attendanceDate: "2026-08-30T00:00:00.000Z",
-      checkIn: "2026-08-30T09:35:00.000Z",
-      checkOut: "2026-08-30T18:00:00.000Z",
-      status: "LATE",
-      notes: "Traffic delay",
-      staff: {
-        id: "staff-2",
-        name: "Amit Kumar",
-        username: "amit",
-        mobileNumber: "9876543211",
-        designation: "Sales Executive",
-      },
-    },
-    {
-      id: "attendance-3",
-      attendanceDate: "2026-08-30T00:00:00.000Z",
-      checkIn: null,
-      checkOut: null,
-      status: "ABSENT",
-      notes: "No information",
-      staff: {
-        id: "staff-3",
-        name: "Priya Singh",
-        username: "priya",
-        mobileNumber: "9876543212",
-        designation: "Accountant",
-      },
-    },
-    {
-      id: "attendance-4",
-      attendanceDate: "2026-08-30T00:00:00.000Z",
-      checkIn: "2026-08-30T10:00:00.000Z",
-      checkOut: "2026-08-30T14:00:00.000Z",
-      status: "HALF_DAY",
-      notes: "Personal work",
-      staff: {
-        id: "staff-4",
-        name: "Neha Verma",
-        username: "neha",
-        mobileNumber: "9876543213",
-        designation: "HR Executive",
-      },
-    },
-    {
-      id: "attendance-5",
-      attendanceDate: "2026-08-30T00:00:00.000Z",
-      checkIn: null,
-      checkOut: null,
-      status: "LEAVE",
-      notes: "Approved leave",
-      staff: {
-        id: "staff-5",
-        name: "Vikas Yadav",
-        username: "vikas",
-        mobileNumber: "9876543214",
-        designation: "Developer",
-      },
-    },
-  ];
 
-  /*
-   * Agar attendance prop empty hai,
-   * dummy data show hoga.
-   */
-  const data = attendance.length > 0 ? attendance : dummyAttendance;
+  /* =========================================================
+     API DATA
+  ========================================================= */
 
-  /*
-   * Search + status + date filtering
-   */
-  const filteredAttendance = data.filter((item) => {
-    const employee = item.staff || item.employee || {};
+  const data = attendance;
 
-    const searchText = search.toLowerCase().trim();
 
-    const matchesSearch =
-      !searchText ||
-      employee.name?.toLowerCase().includes(searchText) ||
-      employee.username?.toLowerCase().includes(searchText) ||
-      employee.mobileNumber?.includes(searchText) ||
-      employee.designation?.toLowerCase().includes(searchText);
+  /* =========================================================
+     FILTER DATA
+     
+     NOTE:
+     Search/status/date API filters are handled by parent.
+     We only render API response here.
+  ========================================================= */
 
-    const matchesStatus =
-      status === "ALL" ||
-      !status ||
-      item.status === status;
+  const displayData = useMemo(() => {
+    return data;
+  }, [data]);
 
-    const attendanceDate = item.attendanceDate
-      ? new Date(item.attendanceDate).toISOString().split("T")[0]
-      : "";
 
-    const matchesDate =
-      !date || attendanceDate === date;
+  /* =========================================================
+     START INDEX
+  ========================================================= */
 
-    return (
-      matchesSearch &&
-      matchesStatus &&
-      matchesDate
-    );
-  });
+  const startIndex =
+    (page - 1) * rowsPerPage;
 
-  /*
-   * Dummy pagination ke liye
-   */
-  const startIndex = (page - 1) * rowsPerPage;
 
-  const paginatedData = filteredAttendance.slice(
-    startIndex,
-    startIndex + rowsPerPage
+  /* =========================================================
+     TOTAL PAGES
+  ========================================================= */
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      total / rowsPerPage
+    )
   );
 
-  const displayTotal =
-    attendance.length > 0 ? total : filteredAttendance.length;
 
   return (
     <div className="space-y-4">
 
-      {/* =========================
+      {/* =====================================================
           FILTERS
-      ========================== */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      ====================================================== */}
 
-        {/* Search */}
+      <div
+        className="
+          flex
+          flex-col
+          gap-3
+          lg:flex-row
+          lg:items-center
+          lg:justify-between
+        "
+      >
+
+        {/* ===================================================
+            SEARCH
+        ==================================================== */}
+
         <div className="w-full lg:max-w-sm">
           <SearchBar
-            value={search}
-            onChange={setSearch}
+            value=""
+            onChange={onSearchChange}
             placeholder="Search employee..."
           />
         </div>
 
-        {/* Filters */}
+
+        {/* ===================================================
+            FILTERS
+        ==================================================== */}
+
         <div className="flex flex-col gap-3 sm:flex-row">
 
           <StatusFilter
-            value={status}
-            onChange={(value) => {
-              setStatus(value);
-              setPage(1);
-            }}
+            value="ALL"
+            onChange={onStatusChange}
             options={[
-              { label: "All Status", value: "ALL" },
-              { label: "Present", value: "PRESENT" },
-              { label: "Absent", value: "ABSENT" },
-              { label: "Late", value: "LATE" },
-              { label: "Half Day", value: "HALF_DAY" },
-              { label: "Leave", value: "LEAVE" },
+              {
+                label: "All Status",
+                value: "ALL",
+              },
+              {
+                label: "Present",
+                value: "PRESENT",
+              },
+              {
+                label: "Absent",
+                value: "ABSENT",
+              },
+              {
+                label: "Late",
+                value: "LATE",
+              },
+              {
+                label: "Half Day",
+                value: "HALF_DAY",
+              },
+              {
+                label: "Leave",
+                value: "LEAVE",
+              },
             ]}
           />
 
+
           <DateFilter
-            value={date}
-            onChange={(value) => {
-              setDate(value);
-              setPage(1);
-            }}
+            value=""
+            onChange={onDateChange}
           />
 
         </div>
       </div>
 
-      {/* =========================
+
+      {/* =====================================================
+          LOADING
+      ====================================================== */}
+
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <div
+            className="
+              h-7
+              w-7
+              animate-spin
+              rounded-full
+              border-2
+              border-primary/30
+              border-t-primary
+            "
+          />
+        </div>
+      )}
+
+
+      {/* =====================================================
           TABLE
-      ========================== */}
-      <Table>
+      ====================================================== */}
 
-        <TableHeader>
-          <TableRow>
+      {!isLoading && (
+        <div className="overflow-x-auto">
 
-            <TableCell
-              header
-              className="w-12.5"
-            >
-              #
-            </TableCell>
+          <Table>
 
-            <TableCell header>
-              Employee
-            </TableCell>
+            {/* =================================================
+                TABLE HEADER
+            ================================================== */}
 
-            <TableCell header>
-              Attendance Date
-            </TableCell>
+            <TableHeader>
 
-            <TableCell header>
-              Check In
-            </TableCell>
+              <TableRow>
 
-            <TableCell header>
-              Check Out
-            </TableCell>
+                <TableCell
+                  header
+                  className="w-12.5"
+                >
+                  #
+                </TableCell>
 
-            <TableCell header>
-              Status
-            </TableCell>
 
-            <TableCell header>
-              Notes
-            </TableCell>
+                <TableCell header>
+                  Employee
+                </TableCell>
 
-          </TableRow>
-        </TableHeader>
 
-        <TableBody>
+                <TableCell header>
+                  Attendance Date
+                </TableCell>
 
-          {paginatedData.length === 0 ? (
-            <TableRow>
 
-              <TableCell
-                colSpan={7}
-                align="center"
-                className="py-12"
-              >
-                <div className="text-sm text-muted-foreground">
-                  No attendance records found.
-                </div>
-              </TableCell>
+                <TableCell header>
+                  Check In
+                </TableCell>
 
-            </TableRow>
-          ) : (
-            paginatedData.map((item, index) => {
 
-              const employee =
-                item.staff ||
-                item.employee ||
-                {};
+                <TableCell header>
+                  Check Out
+                </TableCell>
 
-              return (
-                <TableRow key={item.id}>
 
-                  {/* Number */}
-                  <TableCell>
-                    {startIndex + index + 1}
-                  </TableCell>
+                <TableCell header>
+                  Status
+                </TableCell>
 
-                  {/* Employee */}
-                  <TableCell>
 
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {employee.name || "-"}
-                      </p>
+                <TableCell header>
+                  Notes
+                </TableCell>
 
-                      <p className="text-xs text-muted-foreground">
-                        {employee.designation ||
-                          `@${employee.username || "-"}`}
-                      </p>
+              </TableRow>
+
+            </TableHeader>
+
+
+            {/* =================================================
+                TABLE BODY
+            ================================================== */}
+
+            <TableBody>
+
+              {displayData.length === 0 ? (
+
+                <TableRow>
+
+                  <TableCell
+                    colSpan={7}
+                    align="center"
+                    className="py-12"
+                  >
+                    <div className="text-sm text-muted-foreground">
+                      No attendance records found.
                     </div>
-
-                  </TableCell>
-
-                  {/* Date */}
-                  <TableCell>
-                    {formatDate(item.attendanceDate)}
-                  </TableCell>
-
-                  {/* Check In */}
-                  <TableCell>
-                    {formatTime(item.checkIn)}
-                  </TableCell>
-
-                  {/* Check Out */}
-                  <TableCell>
-                    {formatTime(item.checkOut)}
-                  </TableCell>
-
-                  {/* Status */}
-                  <TableCell>
-
-                    <span
-                      className={`
-                        inline-flex
-                        rounded-full
-                        px-2.5
-                        py-1
-                        text-xs
-                        font-medium
-                        ${getStatusClass(item.status)}
-                      `}
-                    >
-                      {item.status
-                        ?.replaceAll("_", " ")
-                        ?.replace(
-                          /\b\w/g,
-                          (char) => char.toUpperCase()
-                        ) || "-"}
-                    </span>
-
-                  </TableCell>
-
-                  {/* Notes */}
-                  <TableCell>
-
-                    <span className="text-sm text-muted-foreground">
-                      {item.notes || "-"}
-                    </span>
-
                   </TableCell>
 
                 </TableRow>
-              );
-            })
-          )}
 
-        </TableBody>
+              ) : (
 
-        {/* =========================
-            PAGINATION
-        ========================== */}
-        <tfoot>
+                displayData.map(
+                  (item, index) => {
 
-          <tr>
+                    const employee =
+                      item.staff ||
+                      item.employee ||
+                      {};
 
-            <td colSpan={7}>
 
-              <TablePagination
-                page={page}
-                totalPages={
-                  Math.max(
-                    1,
-                    Math.ceil(
-                      displayTotal / rowsPerPage
-                    )
-                  )
-                }
-                totalRows={displayTotal}
-                selectedRows={0}
-                rowsPerPage={rowsPerPage}
-                onPageChange={setPage}
-                onRowsPerPageChange={
-                  handleRowsPerPageChange
-                }
-              />
+                    return (
+                      <TableRow
+                        key={item.id}
+                      >
 
-            </td>
+                        {/* ===================================
+                            NUMBER
+                        ==================================== */}
 
-          </tr>
+                        <TableCell>
+                          {startIndex +
+                            index +
+                            1}
+                        </TableCell>
 
-        </tfoot>
 
-      </Table>
+                        {/* ===================================
+                            EMPLOYEE
+                        ==================================== */}
+
+                        <TableCell>
+
+                          <div>
+
+                            <p className="font-medium text-foreground">
+                              {employee.name ||
+                                "-"}
+                            </p>
+
+                            <p className="text-xs text-muted-foreground">
+                              {employee.designation ||
+                                employee.username ||
+                                employee.mobileNumber ||
+                                "-"}
+                            </p>
+
+                          </div>
+
+                        </TableCell>
+
+
+                        {/* ===================================
+                            DATE
+                        ==================================== */}
+
+                        <TableCell>
+                          {formatDate(
+                            item.attendanceDate
+                          )}
+                        </TableCell>
+
+
+                        {/* ===================================
+                            CHECK IN
+                        ==================================== */}
+
+                        <TableCell>
+                          {formatTime(
+                            item.checkIn
+                          )}
+                        </TableCell>
+
+
+                        {/* ===================================
+                            CHECK OUT
+                        ==================================== */}
+
+                        <TableCell>
+                          {formatTime(
+                            item.checkOut
+                          )}
+                        </TableCell>
+
+
+                        {/* ===================================
+                            STATUS
+                        ==================================== */}
+
+                        <TableCell>
+
+                          <span
+                            className={`
+                              inline-flex
+                              rounded-full
+                              px-2.5
+                              py-1
+                              text-xs
+                              font-medium
+                              ${getStatusClass(
+                                item.status
+                              )}
+                            `}
+                          >
+                            {item.status
+                              ?.replaceAll(
+                                "_",
+                                " "
+                              )
+                              ?.replace(
+                                /\b\w/g,
+                                (char) =>
+                                  char.toUpperCase()
+                              ) || "-"}
+                          </span>
+
+                        </TableCell>
+
+
+                        {/* ===================================
+                            NOTES
+                        ==================================== */}
+
+                        <TableCell>
+
+                          <span className="text-sm text-muted-foreground">
+                            {item.notes || "-"}
+                          </span>
+
+                        </TableCell>
+
+                      </TableRow>
+                    );
+                  }
+                )
+              )}
+
+            </TableBody>
+
+
+            {/* =================================================
+                PAGINATION
+            ================================================== */}
+
+            <tfoot>
+
+              <tr>
+
+                <td colSpan={7}>
+
+                  <TablePagination
+                    page={page}
+                    totalPages={totalPages}
+                    totalRows={total}
+                    selectedRows={0}
+                    rowsPerPage={rowsPerPage}
+                    onPageChange={
+                      onPageChange
+                    }
+                    onRowsPerPageChange={
+                      onRowsPerPageChange
+                    }
+                  />
+
+                </td>
+
+              </tr>
+
+            </tfoot>
+
+          </Table>
+
+        </div>
+      )}
+
+
+      {/* =====================================================
+          FETCHING INDICATOR
+      ====================================================== */}
+
+      {!isLoading && isFetching && (
+        <div className="text-center text-xs text-muted-foreground">
+          Updating attendance...
+        </div>
+      )}
+
     </div>
   );
 }

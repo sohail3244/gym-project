@@ -53,16 +53,21 @@ export default function StaffAttendanceForm({
     if (initialData) {
       setForm({
         staffId: initialData.staffId || "",
+
         attendanceDate: initialData.attendanceDate
           ? String(initialData.attendanceDate).slice(0, 10)
           : "",
+
         checkIn: initialData.checkIn
           ? formatDateTimeLocal(initialData.checkIn)
           : "",
+
         checkOut: initialData.checkOut
           ? formatDateTimeLocal(initialData.checkOut)
           : "",
+
         status: initialData.status || "PRESENT",
+
         notes: initialData.notes || "",
       });
     } else {
@@ -84,15 +89,19 @@ export default function StaffAttendanceForm({
     }
 
     const year = parsedDate.getFullYear();
+
     const month = String(
       parsedDate.getMonth() + 1
     ).padStart(2, "0");
+
     const day = String(
       parsedDate.getDate()
     ).padStart(2, "0");
+
     const hours = String(
       parsedDate.getHours()
     ).padStart(2, "0");
+
     const minutes = String(
       parsedDate.getMinutes()
     ).padStart(2, "0");
@@ -126,7 +135,8 @@ export default function StaffAttendanceForm({
     const newErrors = {};
 
     if (!form.staffId) {
-      newErrors.staffId = "Please select a staff member";
+      newErrors.staffId =
+        "Please select a staff member";
     }
 
     if (!form.attendanceDate) {
@@ -135,7 +145,8 @@ export default function StaffAttendanceForm({
     }
 
     if (!form.status) {
-      newErrors.status = "Attendance status is required";
+      newErrors.status =
+        "Attendance status is required";
     }
 
     if (form.checkIn && form.checkOut) {
@@ -148,7 +159,10 @@ export default function StaffAttendanceForm({
       }
     }
 
-    if (form.notes && form.notes.length > 500) {
+    if (
+      form.notes &&
+      form.notes.length > 500
+    ) {
       newErrors.notes =
         "Notes cannot exceed 500 characters";
     }
@@ -175,6 +189,22 @@ export default function StaffAttendanceForm({
   };
 
   /* =========================================================
+     ATTENDANCE DATE CONVERTER
+  ========================================================= */
+
+  const attendanceDateToISOString = (value) => {
+    if (!value) return null;
+
+    const date = new Date(`${value}T00:00:00`);
+
+    if (Number.isNaN(date.getTime())) {
+      return null;
+    }
+
+    return date.toISOString();
+  };
+
+  /* =========================================================
      SUBMIT
   ========================================================= */
 
@@ -187,12 +217,28 @@ export default function StaffAttendanceForm({
 
     const payload = {
       staffId: form.staffId,
-      attendanceDate: form.attendanceDate,
-      checkIn: toISOString(form.checkIn),
-      checkOut: toISOString(form.checkOut),
+
+      attendanceDate:
+        form.attendanceDate,
+
+      checkIn: toISOString(
+        form.checkIn
+      ),
+
+      checkOut: toISOString(
+        form.checkOut
+      ),
+
       status: form.status,
-      notes: form.notes.trim() || null,
+
+      notes:
+        form.notes.trim() || null,
     };
+
+    console.log(
+      "Attendance Payload:",
+      payload
+    );
 
     try {
       await onSubmit(payload);
@@ -237,9 +283,7 @@ export default function StaffAttendanceForm({
       onSubmit={handleSubmit}
       className="space-y-6"
     >
-      {/* =====================================================
-          STAFF
-      ====================================================== */}
+      {/* STAFF */}
 
       <div className="space-y-2">
         <label
@@ -247,7 +291,9 @@ export default function StaffAttendanceForm({
           className="text-sm font-medium text-foreground"
         >
           Staff
-          <span className="ml-1 text-red-500">*</span>
+          <span className="ml-1 text-red-500">
+            *
+          </span>
         </label>
 
         <select
@@ -268,6 +314,7 @@ export default function StaffAttendanceForm({
               value={staff.id}
             >
               {staff.name}
+
               {staff.staffType
                 ? ` - ${staff.staffType}`
                 : ""}
@@ -282,9 +329,7 @@ export default function StaffAttendanceForm({
         )}
       </div>
 
-      {/* =====================================================
-          ATTENDANCE DATE
-      ====================================================== */}
+      {/* ATTENDANCE DATE */}
 
       <div className="space-y-2">
         <label
@@ -292,7 +337,9 @@ export default function StaffAttendanceForm({
           className="text-sm font-medium text-foreground"
         >
           Attendance Date
-          <span className="ml-1 text-red-500">*</span>
+          <span className="ml-1 text-red-500">
+            *
+          </span>
         </label>
 
         <input
@@ -314,11 +361,10 @@ export default function StaffAttendanceForm({
         )}
       </div>
 
-      {/* =====================================================
-          CHECK IN / CHECK OUT
-      ====================================================== */}
+      {/* CHECK IN / CHECK OUT */}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
         {/* CHECK IN */}
 
         <div className="space-y-2">
@@ -374,9 +420,7 @@ export default function StaffAttendanceForm({
         </div>
       </div>
 
-      {/* =====================================================
-          STATUS
-      ====================================================== */}
+      {/* STATUS */}
 
       <div className="space-y-2">
         <label
@@ -384,7 +428,9 @@ export default function StaffAttendanceForm({
           className="text-sm font-medium text-foreground"
         >
           Status
-          <span className="ml-1 text-red-500">*</span>
+          <span className="ml-1 text-red-500">
+            *
+          </span>
         </label>
 
         <select
@@ -414,9 +460,7 @@ export default function StaffAttendanceForm({
         )}
       </div>
 
-      {/* =====================================================
-          NOTES
-      ====================================================== */}
+      {/* NOTES */}
 
       <div className="space-y-2">
         <label
@@ -455,11 +499,10 @@ export default function StaffAttendanceForm({
         </div>
       </div>
 
-      {/* =====================================================
-          ACTIONS
-      ====================================================== */}
+      {/* ACTIONS */}
 
       <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
+
         <button
           type="button"
           onClick={onClose}
@@ -507,7 +550,6 @@ export default function StaffAttendanceForm({
           {isLoading ? (
             <>
               <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground" />
-
               Saving...
             </>
           ) : mode === "edit" ? (

@@ -22,7 +22,7 @@ export const MEMBER_QUERY_KEYS = {
 /**
  * Get all members
  *
- * GET /admin/members
+ * GET /members
  *
  * Query params:
  * {
@@ -37,7 +37,7 @@ export const useMembers = (params = {}) => {
     queryKey: MEMBER_QUERY_KEYS.list(params),
 
     queryFn: async () => {
-      const response = await api.get("/admin/members", {
+      const response = await api.get("/members", {
         params,
       });
 
@@ -53,7 +53,7 @@ export const useMembers = (params = {}) => {
 /**
  * Get member by ID
  *
- * GET /admin/members/:id
+ * GET /members/:id
  */
 export const useMember = (memberId) => {
   return useQuery({
@@ -61,7 +61,7 @@ export const useMember = (memberId) => {
 
     queryFn: async () => {
       const response = await api.get(
-        `/admin/members/${memberId}`
+        `/members/${memberId}`
       );
 
       return response.data;
@@ -76,7 +76,7 @@ export const useMember = (memberId) => {
 /**
  * Create member
  *
- * POST /admin/members
+ * POST /members
  */
 export const useCreateMember = () => {
   const queryClient = useQueryClient();
@@ -84,7 +84,7 @@ export const useCreateMember = () => {
   return useMutation({
     mutationFn: async (data) => {
       const response = await api.post(
-        "/admin/members",
+        "/members",
         data
       );
 
@@ -102,7 +102,7 @@ export const useCreateMember = () => {
 /**
  * Update member
  *
- * PATCH /admin/members/:id
+ * PATCH /members/:id
  */
 export const useUpdateMember = () => {
   const queryClient = useQueryClient();
@@ -110,7 +110,7 @@ export const useUpdateMember = () => {
   return useMutation({
     mutationFn: async ({ memberId, data }) => {
       const response = await api.patch(
-        `/admin/members/${memberId}`,
+        `/members/${memberId}`,
         data
       );
 
@@ -134,7 +134,7 @@ export const useUpdateMember = () => {
 /**
  * Update member status
  *
- * PATCH /admin/members/:id/status
+ * PATCH /members/:id/status
  *
  * Payload:
  * {
@@ -147,7 +147,7 @@ export const useUpdateMemberStatus = () => {
   return useMutation({
     mutationFn: async ({ memberId, status }) => {
       const response = await api.patch(
-        `/admin/members/${memberId}/status`,
+        `/members/${memberId}/status`,
         {
           status,
         }
@@ -173,7 +173,7 @@ export const useUpdateMemberStatus = () => {
 /**
  * Delete member
  *
- * DELETE /admin/members/:id
+ * DELETE /members/:id
  */
 export const useDeleteMember = () => {
   const queryClient = useQueryClient();
@@ -181,7 +181,7 @@ export const useDeleteMember = () => {
   return useMutation({
     mutationFn: async (memberId) => {
       const response = await api.delete(
-        `/admin/members/${memberId}`
+        `/members/${memberId}`
       );
 
       return response.data;

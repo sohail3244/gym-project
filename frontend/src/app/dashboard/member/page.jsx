@@ -16,14 +16,23 @@ import Button from "@/components/ui/Button";
 import {
   useMembers,
   useCreateMember,
+  useUpdateMember,
+  useUpdateMemberStatus,
+  useDeleteMember,
 } from "@/lib/hooks/useMember";
 
 export default function MembersPage() {
-  const [showMemberModal, setShowMemberModal] = useState(false);
+  // =========================================================
+  // MODAL STATE
+  // =========================================================
 
-  // =========================
+  const [showMemberModal, setShowMemberModal] = useState(false);
+  const [editingMember, setEditingMember] = useState(null);
+
+  // =========================================================
   // GET MEMBERS
-  // =========================
+  // =========================================================
+
   const {
     data: membersResponse,
     isLoading: isMembersLoading,
@@ -34,51 +43,181 @@ export default function MembersPage() {
     limit: 10,
   });
 
-  // Backend response:
-  // {
-  //   success: true,
-  //   message: "...",
-  //   data: {
-  //     members: [],
-  //     pagination: {}
-  //   }
-  // }
+  const members =
+    membersResponse?.data?.members || [];
 
-  const members = membersResponse?.data?.members || [];
-
-  // =========================
+  // =========================================================
   // CREATE MEMBER
-  // =========================
-  const createMemberMutation = useCreateMember();
+  // =========================================================
+
+  const createMemberMutation =
+    useCreateMember();
+
+  // =========================================================
+  // UPDATE MEMBER
+  // =========================================================
+
+  const updateMemberMutation =
+    useUpdateMember();
+
+  // =========================================================
+  // UPDATE MEMBER STATUS
+  // =========================================================
+
+  const updateMemberStatusMutation =
+    useUpdateMemberStatus();
+
+  // =========================================================
+  // DELETE MEMBER
+  // =========================================================
+
+  const deleteMemberMutation =
+    useDeleteMember();
+
+  // =========================================================
+  // CREATE MEMBER
+  // =========================================================
 
   const handleCreateMember = async (payload) => {
     try {
-      await createMemberMutation.mutateAsync(payload);
+      await createMemberMutation.mutateAsync(
+        payload
+      );
 
       setShowMemberModal(false);
+      setEditingMember(null);
     } catch (error) {
-      console.error("Create Member Error:", error);
+      console.error(
+        "Create Member Error:",
+        error
+      );
     }
   };
 
-  // =========================
+  // =========================================================
+  // OPEN EDIT MODAL
+  // =========================================================
+
+  const handleEditMember = (member) => {
+    setEditingMember(member);
+    setShowMemberModal(true);
+  };
+
+  // =========================================================
+  // UPDATE MEMBER
+  // =========================================================
+
+  const handleUpdateMember = async (payload) => {
+    if (!editingMember?.id) return;
+
+    try {
+      await updateMemberMutation.mutateAsync({
+        memberId: editingMember.id,
+        data: payload,
+      });
+
+      setShowMemberModal(false);
+      setEditingMember(null);
+    } catch (error) {
+      console.error(
+        "Update Member Error:",
+        error
+      );
+    }
+  };
+
+  // =========================================================
+  // TOGGLE MEMBER STATUS
+  // =========================================================
+
+  const handleToggleMemberStatus = async (
+    member
+  ) => {
+    if (!member?.id) return;
+
+    const newStatus =
+      member.status === "ACTIVE"
+        ? "INACTIVE"
+        : "ACTIVE";
+
+    try {
+      await updateMemberStatusMutation.mutateAsync(
+        {
+          memberId: member.id,
+          status: newStatus,
+        }
+      );
+    } catch (error) {
+      console.error(
+        "Update Member Status Error:",
+        error
+      );
+    }
+  };
+
+  // =========================================================
+  // DELETE MEMBER
+  // =========================================================
+
+  const handleDeleteMember = async (member) => {
+    if (!member?.id) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${member.name}?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await deleteMemberMutation.mutateAsync(
+        member.id
+      );
+    } catch (error) {
+      console.error(
+        "Delete Member Error:",
+        error
+      );
+    }
+  };
+
+  // =========================================================
+  // CLOSE MODAL
+  // =========================================================
+
+  const handleCloseModal = () => {
+    if (
+      createMemberMutation.isPending ||
+      updateMemberMutation.isPending
+    ) {
+      return;
+    }
+
+    setShowMemberModal(false);
+    setEditingMember(null);
+  };
+
+  // =========================================================
   // DYNAMIC STATS
-  // =========================
+  // =========================================================
+
   const stats = useMemo(() => {
     const total =
       membersResponse?.data?.pagination?.total ??
       members.length;
 
     const active = members.filter(
-      (member) => member.status === "ACTIVE"
+      (member) =>
+        member.status === "ACTIVE"
     ).length;
 
     const inactive = members.filter(
-      (member) => member.status === "INACTIVE"
+      (member) =>
+        member.status === "INACTIVE"
     ).length;
 
     const suspended = members.filter(
-      (member) => member.status === "SUSPENDED"
+      (member) =>
+        member.status === "SUSPENDED"
     ).length;
 
     return [
@@ -105,12 +244,26 @@ export default function MembersPage() {
     ];
   }, [members, membersResponse]);
 
+  // =========================================================
+  // ERROR MESSAGE
+  // =========================================================
+
+  const errorMessage =
+    membersError?.response?.data?.message ||
+    membersError?.message ||
+    "Failed to load members";
+
+  // =========================================================
+  // RENDER
+  // =========================================================
+
   return (
     <>
       <main className="space-y-6 p-6">
-        {/* =========================
+        {/* =====================================================
             PAGE HEADER
-        ========================== */}
+        ====================================================== */}
+
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -118,7 +271,8 @@ export default function MembersPage() {
             </h1>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              Manage your gym members and their account status.
+              Manage your gym members and their
+              account status.
             </p>
           </div>
 
@@ -127,13 +281,33 @@ export default function MembersPage() {
             icon={Plus}
             iconPosition="left"
             type="button"
-            onClick={() => setShowMemberModal(true)}
+            onClick={() => {
+              setEditingMember(null);
+              setShowMemberModal(true);
+            }}
+            disabled={
+              createMemberMutation.isPending ||
+              updateMemberMutation.isPending
+            }
           />
         </div>
 
-        {/* =========================
+        {/* =====================================================
+            ERROR
+        ====================================================== */}
+
+        {membersError && (
+          <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4">
+            <p className="text-sm text-destructive">
+              {errorMessage}
+            </p>
+          </div>
+        )}
+
+        {/* =====================================================
             STATS
-        ========================== */}
+        ====================================================== */}
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {stats.map((stat) => {
             const Icon = stat.icon;
@@ -157,7 +331,9 @@ export default function MembersPage() {
                     </p>
 
                     <p className="mt-2 text-2xl font-bold text-foreground">
-                      {stat.value}
+                      {isMembersLoading
+                        ? "..."
+                        : stat.value}
                     </p>
                   </div>
 
@@ -181,9 +357,10 @@ export default function MembersPage() {
           })}
         </div>
 
-        {/* =========================
+        {/* =====================================================
             MEMBER TABLE
-        ========================== */}
+        ====================================================== */}
+
         <section
           className="
             rounded-2xl
@@ -200,7 +377,8 @@ export default function MembersPage() {
             </h2>
 
             <p className="mt-1 text-xs text-muted-foreground">
-              View and manage members registered with your gym.
+              View and manage members registered
+              with your gym.
             </p>
           </div>
 
@@ -208,29 +386,35 @@ export default function MembersPage() {
             members={members}
             isLoading={isMembersLoading}
             isFetching={isMembersFetching}
+            onEdit={handleEditMember}
+            onToggleStatus={
+              handleToggleMemberStatus
+            }
+            onDelete={handleDeleteMember}
           />
-
-          {/* Error */}
-          {membersError && (
-            <p className="mt-4 text-sm text-destructive">
-              {membersError?.response?.data?.message ||
-                membersError?.message ||
-                "Failed to load members"}
-            </p>
-          )}
         </section>
       </main>
 
-      {/* =========================
-          ADD MEMBER MODAL
-      ========================== */}
+      {/* =====================================================
+          ADD / EDIT MEMBER MODAL
+      ====================================================== */}
+
       <MemberModal
         isOpen={showMemberModal}
-        onClose={() => setShowMemberModal(false)}
-        mode="create"
-        member={null}
-        onSuccess={handleCreateMember}
-        isLoading={createMemberMutation.isPending}
+        onClose={handleCloseModal}
+        mode={
+          editingMember ? "edit" : "create"
+        }
+        member={editingMember}
+        onSuccess={
+          editingMember
+            ? handleUpdateMember
+            : handleCreateMember
+        }
+        isLoading={
+          createMemberMutation.isPending ||
+          updateMemberMutation.isPending
+        }
       />
     </>
   );

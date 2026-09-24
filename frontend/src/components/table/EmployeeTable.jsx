@@ -19,6 +19,8 @@ import {
   Pencil,
   Trash2,
   MoreVertical,
+  UserCheck,
+  UserX,
 } from "lucide-react";
 
 export default function EmployeeTable({
@@ -31,6 +33,10 @@ export default function EmployeeTable({
   error = null,
   showSearch = true,
   showStatusFilter = true,
+  onView,
+  onEdit,
+  onToggleStatus,
+  onDelete,
 }) {
   /* =========================================================
      PAGINATION DATA
@@ -185,25 +191,25 @@ export default function EmployeeTable({
   const handleView = (employee) => {
     setOpenAction(null);
 
-    console.log("View Employee:", employee);
-
-    // Yaha future me view modal/page open kar sakte ho
+    onView?.(employee);
   };
 
   const handleEdit = (employee) => {
     setOpenAction(null);
 
-    console.log("Edit Employee:", employee);
-
-    // Yaha future me edit modal open kar sakte ho
+    onEdit?.(employee);
   };
 
   const handleDelete = (employee) => {
     setOpenAction(null);
 
-    console.log("Delete Employee:", employee);
+    onDelete?.(employee);
+  };
 
-    // Yaha future me delete confirmation modal open kar sakte ho
+  const handleToggleStatus = (employee) => {
+    setOpenAction(null);
+
+    onToggleStatus?.(employee);
   };
 
   /* =========================================================
@@ -344,128 +350,128 @@ export default function EmployeeTable({
               </TableRow>
             ) : /* ================= ERROR ================= */
 
-            error ? (
-              <TableRow>
-                <TableCell
-                  colSpan={8}
-                  align="center"
-                  className="py-12"
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-red-600">
-                      Failed to load employees.
-                    </p>
-
-                    <p className="text-xs text-muted-foreground">
-                      Please try again.
-                    </p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : /* ================= EMPTY ================= */
-
-            employees.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={8}
-                  align="center"
-                  className="py-12"
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-foreground">
-                      No employees found.
-                    </p>
-
-                    {search || status ? (
-                      <p className="text-xs text-muted-foreground">
-                        Try changing your search or filters.
+              error ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={8}
+                    align="center"
+                    className="py-12"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-red-600">
+                        Failed to load employees.
                       </p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        Add your first employee to get started.
-                      </p>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              /* ================= EMPLOYEES ================= */
 
-              employees.map((employee, index) => (
-                <TableRow key={employee.id}>
-                  {/* =========================================
+                      <p className="text-xs text-muted-foreground">
+                        Please try again.
+                      </p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : /* ================= EMPTY ================= */
+
+                employees.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={8}
+                      align="center"
+                      className="py-12"
+                    >
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground">
+                          No employees found.
+                        </p>
+
+                        {search || status ? (
+                          <p className="text-xs text-muted-foreground">
+                            Try changing your search or filters.
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Add your first employee to get started.
+                          </p>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  /* ================= EMPLOYEES ================= */
+
+                  employees.map((employee, index) => (
+                    <TableRow key={employee.id}>
+                      {/* =========================================
                       INDEX
                   ========================================== */}
 
-                  <TableCell>
-                    {(page - 1) * rowsPerPage +
-                      index +
-                      1}
-                  </TableCell>
+                      <TableCell>
+                        {(page - 1) * rowsPerPage +
+                          index +
+                          1}
+                      </TableCell>
 
-                  {/* =========================================
+                      {/* =========================================
                       EMPLOYEE
                   ========================================== */}
 
-                  <TableCell>
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-foreground">
-                        {employee.name || "-"}
-                      </p>
+                      <TableCell>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">
+                            {employee.name || "-"}
+                          </p>
 
-                      {employee.username && (
-                        <p className="text-xs text-muted-foreground">
-                          @{employee.username}
-                        </p>
-                      )}
+                          {employee.username && (
+                            <p className="text-xs text-muted-foreground">
+                              @{employee.username}
+                            </p>
+                          )}
 
-                      {employee.email && (
-                        <p className="max-w-50 truncate text-xs text-muted-foreground">
-                          {employee.email}
-                        </p>
-                      )}
-                    </div>
-                  </TableCell>
+                          {employee.email && (
+                            <p className="max-w-50 truncate text-xs text-muted-foreground">
+                              {employee.email}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
 
-                  {/* =========================================
+                      {/* =========================================
                       EMPLOYEE TYPE
                   ========================================== */}
 
-                  <TableCell>
-                    <span className="text-sm font-medium text-foreground">
-                      {getStaffTypeLabel(
-                        employee.staffType
-                      )}
-                    </span>
-                  </TableCell>
+                      <TableCell>
+                        <span className="text-sm font-medium text-foreground">
+                          {getStaffTypeLabel(
+                            employee.staffType
+                          )}
+                        </span>
+                      </TableCell>
 
-                  {/* =========================================
+                      {/* =========================================
                       DESIGNATION
                   ========================================== */}
 
-                  <TableCell>
-                    <span className="text-sm text-foreground">
-                      {employee.designation || "-"}
-                    </span>
-                  </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-foreground">
+                          {employee.designation || "-"}
+                        </span>
+                      </TableCell>
 
-                  {/* =========================================
+                      {/* =========================================
                       MOBILE
                   ========================================== */}
 
-                  <TableCell>
-                    <span className="text-sm text-foreground">
-                      {employee.mobileNumber || "-"}
-                    </span>
-                  </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-foreground">
+                          {employee.mobileNumber || "-"}
+                        </span>
+                      </TableCell>
 
-                  {/* =========================================
+                      {/* =========================================
                       STATUS
                   ========================================== */}
 
-                  <TableCell>
-                    <span
-                      className={`
+                      <TableCell>
+                        <span
+                          className={`
                         inline-flex
                         rounded-full
                         px-2.5
@@ -474,47 +480,47 @@ export default function EmployeeTable({
                         font-medium
                         ${getStatusClass(employee.status)}
                       `}
-                    >
-                      {employee.status || "-"}
-                    </span>
-                  </TableCell>
+                        >
+                          {employee.status || "-"}
+                        </span>
+                      </TableCell>
 
-                  {/* =========================================
+                      {/* =========================================
                       JOINED DATE
                   ========================================== */}
 
-                  <TableCell>
-                    <span className="text-sm text-foreground">
-                      {formatDate(employee.createdAt)}
-                    </span>
-                  </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-foreground">
+                          {formatDate(employee.createdAt)}
+                        </span>
+                      </TableCell>
 
-                  {/* =========================================
+                      {/* =========================================
                       ACTIONS
                   ========================================== */}
 
-                  <TableCell align="right">
-                    <div
-                      className="relative inline-block"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                      }}
-                    >
-                      {/* THREE DOT BUTTON */}
+                      <TableCell align="right">
+                        <div
+                          className="relative inline-block"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                          }}
+                        >
+                          {/* THREE DOT BUTTON */}
 
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
 
-                          setOpenAction(
-                            openAction === employee.id
-                              ? null
-                              : employee.id
-                          );
-                        }}
-                        aria-label="Employee actions"
-                        className="
+                              setOpenAction(
+                                openAction === employee.id
+                                  ? null
+                                  : employee.id
+                              );
+                            }}
+                            aria-label="Employee actions"
+                            className="
                           flex
                           h-8
                           w-8
@@ -527,15 +533,15 @@ export default function EmployeeTable({
                           hover:text-foreground
                           active:scale-95
                         "
-                      >
-                        <MoreVertical size={18} />
-                      </button>
+                          >
+                            <MoreVertical size={18} />
+                          </button>
 
-                      {/* ACTION MENU */}
+                          {/* ACTION MENU */}
 
-                      {openAction === employee.id && (
-                        <div
-                          className="
+                          {openAction === employee.id && (
+                            <div
+                              className="
                             absolute
                             right-0
                             z-50
@@ -549,15 +555,15 @@ export default function EmployeeTable({
                             p-1
                             shadow-lg
                           "
-                        >
-                          {/* VIEW */}
+                            >
+                              {/* VIEW */}
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleView(employee)
-                            }
-                            className="
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleView(employee)
+                                }
+                                className="
                               flex
                               w-full
                               items-center
@@ -570,22 +576,22 @@ export default function EmployeeTable({
                               transition
                               hover:bg-secondary
                             "
-                          >
-                            <Eye size={15} />
+                              >
+                                <Eye size={15} />
 
-                            <span>
-                              View
-                            </span>
-                          </button>
+                                <span>
+                                  View
+                                </span>
+                              </button>
 
-                          {/* EDIT */}
+                              {/* EDIT */}
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleEdit(employee)
-                            }
-                            className="
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleEdit(employee)
+                                }
+                                className="
                               flex
                               w-full
                               items-center
@@ -598,22 +604,62 @@ export default function EmployeeTable({
                               transition
                               hover:bg-secondary
                             "
-                          >
-                            <Pencil size={15} />
+                              >
+                                <Pencil size={15} />
 
-                            <span>
-                              Edit
-                            </span>
-                          </button>
+                                <span>
+                                  Edit
+                                </span>
+                              </button>
 
-                          {/* DELETE */}
+                              {/* CHANGE STATUS */}
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleDelete(employee)
-                            }
-                            className="
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleToggleStatus(employee)
+                                }
+                                className="
+    flex
+    w-full
+    items-center
+    gap-2
+    rounded-lg
+    px-3
+    py-2
+    text-sm
+    text-foreground
+    transition
+    hover:bg-secondary
+  "
+                              >
+                                {employee.status === "ACTIVE" ? (
+                                  <>
+                                    <UserX size={15} />
+
+                                    <span>
+                                      Deactivate
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserCheck size={15} />
+
+                                    <span>
+                                      Activate
+                                    </span>
+                                  </>
+                                )}
+                              </button>
+
+                              {/* DELETE */}
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleDelete(employee)
+                                }
+                                className="
                               flex
                               w-full
                               items-center
@@ -627,20 +673,20 @@ export default function EmployeeTable({
                               hover:bg-red-50
                               dark:hover:bg-red-950/30
                             "
-                          >
-                            <Trash2 size={15} />
+                              >
+                                <Trash2 size={15} />
 
-                            <span>
-                              Delete
-                            </span>
-                          </button>
+                                <span>
+                                  Delete
+                                </span>
+                              </button>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
           </TableBody>
 
           {/* =================================================

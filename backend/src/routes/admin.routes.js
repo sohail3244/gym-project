@@ -5,6 +5,8 @@ import {
   createAdmin,
   getAllAdmins,
   getAdminById,
+  updateAdmin,
+  changeAdminStatus,
 } from "../controllers/admin.controller.js";
 
 import authMiddleware from "../middleware/auth.middleware.js";
@@ -36,6 +38,20 @@ router.get(
   authMiddleware,
   roleMiddleware("SUPER_ADMIN"),
   getAdminById
+);
+
+router.put(
+  "/:id",
+  authMiddleware,
+  roleMiddleware("SUPER_ADMIN"),
+  updateAdmin
+);
+
+router.patch(
+  "/:id/status",
+  authMiddleware,
+  roleMiddleware("SUPER_ADMIN"),
+  changeAdminStatus
 );
 
 export default router;

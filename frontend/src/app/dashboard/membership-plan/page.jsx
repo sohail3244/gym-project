@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
+
 import {
   Plus,
   CreditCard,
@@ -15,6 +16,9 @@ import MembershipPlanModal from "@/components/modals/MembershipPlanModal";
 import {
   useMembershipPlans,
   useCreateMembershipPlan,
+  useUpdateMembershipPlan,
+  useUpdateMembershipPlanStatus,
+  useDeleteMembershipPlan,
 } from "@/lib/hooks/useMembershipPlan";
 
 export default function MembershipPlansPage() {
@@ -22,7 +26,14 @@ export default function MembershipPlansPage() {
   // MODAL STATE
   // =========================================================
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] =
+    useState(false);
+
+  const [showEditModal, setShowEditModal] =
+    useState(false);
+
+  const [selectedPlan, setSelectedPlan] =
+    useState(null);
 
   // =========================================================
   // GET MEMBERSHIP PLANS
@@ -43,6 +54,27 @@ export default function MembershipPlansPage() {
     useCreateMembershipPlan();
 
   // =========================================================
+  // UPDATE MEMBERSHIP PLAN
+  // =========================================================
+
+  const updateMembershipPlanMutation =
+    useUpdateMembershipPlan();
+
+  // =========================================================
+  // UPDATE MEMBERSHIP PLAN STATUS
+  // =========================================================
+
+  const updateMembershipPlanStatusMutation =
+    useUpdateMembershipPlanStatus();
+
+  // =========================================================
+  // DELETE MEMBERSHIP PLAN
+  // =========================================================
+
+  const deleteMembershipPlanMutation =
+    useDeleteMembershipPlan();
+
+  // =========================================================
   // NORMALIZE RESPONSE
   // =========================================================
 
@@ -56,23 +88,32 @@ export default function MembershipPlansPage() {
   // STATS
   // =========================================================
 
-  const totalPlans = membershipPlans.length;
+  const totalPlans =
+    membershipPlans.length;
 
-  const activePlans = membershipPlans.filter(
-    (plan) => plan.status === "ACTIVE"
-  ).length;
+  const activePlans =
+    membershipPlans.filter(
+      (plan) =>
+        plan.status === "ACTIVE"
+    ).length;
 
-  const totalMembers = membershipPlans.reduce(
-    (total, plan) =>
-      total + Number(plan?._count?.memberships || 0),
-    0
-  );
+  const totalMembers =
+    membershipPlans.reduce(
+      (total, plan) =>
+        total +
+        Number(
+          plan?._count?.memberships || 0
+        ),
+      0
+    );
 
   // =========================================================
   // CREATE PLAN
   // =========================================================
 
-  const handleCreatePlan = async (payload) => {
+  const handleCreatePlan = async (
+    payload
+  ) => {
     try {
       await createMembershipPlanMutation.mutateAsync(
         payload
@@ -82,6 +123,113 @@ export default function MembershipPlansPage() {
     } catch (error) {
       console.error(
         "Create Membership Plan Error:",
+        error
+      );
+    }
+  };
+
+  // =========================================================
+  // VIEW PLAN
+  // =========================================================
+
+  const handleViewPlan = (plan) => {
+    console.log(
+      "View Membership Plan:",
+      plan
+    );
+
+    // Abhi detail page/modal nahi banaya hai.
+    // Isliye selected plan ko store kar rahe hain.
+    setSelectedPlan(plan);
+  };
+
+  // =========================================================
+  // EDIT PLAN
+  // =========================================================
+
+  const handleEditPlan = (plan) => {
+    setSelectedPlan(plan);
+    setShowEditModal(true);
+  };
+
+  // =========================================================
+  // UPDATE PLAN
+  // =========================================================
+
+  const handleUpdatePlan = async (
+    payload
+  ) => {
+    if (!selectedPlan?.id) return;
+
+    try {
+      await updateMembershipPlanMutation.mutateAsync(
+        {
+          planId: selectedPlan.id,
+          data: payload,
+        }
+      );
+
+      setShowEditModal(false);
+      setSelectedPlan(null);
+    } catch (error) {
+      console.error(
+        "Update Membership Plan Error:",
+        error
+      );
+    }
+  };
+
+  // =========================================================
+  // TOGGLE PLAN STATUS
+  // =========================================================
+
+  const handleTogglePlanStatus = async (
+    plan
+  ) => {
+    if (!plan?.id) return;
+
+    const newStatus =
+      plan.status === "ACTIVE"
+        ? "INACTIVE"
+        : "ACTIVE";
+
+    try {
+      await updateMembershipPlanStatusMutation.mutateAsync(
+        {
+          planId: plan.id,
+          status: newStatus,
+        }
+      );
+    } catch (error) {
+      console.error(
+        "Update Membership Plan Status Error:",
+        error
+      );
+    }
+  };
+
+  // =========================================================
+  // DELETE PLAN
+  // =========================================================
+
+  const handleDeletePlan = async (
+    plan
+  ) => {
+    if (!plan?.id) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${plan.name}"?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await deleteMembershipPlanMutation.mutateAsync(
+        plan.id
+      );
+    } catch (error) {
+      console.error(
+        "Delete Membership Plan Error:",
         error
       );
     }
@@ -114,15 +262,20 @@ export default function MembershipPlansPage() {
             </h1>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              Create and manage membership plans for your gym
-              members.
+              Create and manage membership plans
+              for your gym members.
             </p>
           </div>
 
           <Button
             icon={Plus}
-            onClick={() => setShowCreateModal(true)}
-            disabled={createMembershipPlanMutation.isPending}
+            onClick={() => {
+              setSelectedPlan(null);
+              setShowCreateModal(true);
+            }}
+            disabled={
+              createMembershipPlanMutation.isPending
+            }
           >
             Create Plan
           </Button>
@@ -153,7 +306,9 @@ export default function MembershipPlansPage() {
                 </p>
 
                 <h2 className="mt-1 text-2xl font-bold text-foreground">
-                  {plansLoading ? "..." : totalPlans}
+                  {plansLoading
+                    ? "..."
+                    : totalPlans}
                 </h2>
               </div>
 
@@ -173,7 +328,9 @@ export default function MembershipPlansPage() {
                 </p>
 
                 <h2 className="mt-1 text-2xl font-bold text-foreground">
-                  {plansLoading ? "..." : activePlans}
+                  {plansLoading
+                    ? "..."
+                    : activePlans}
                 </h2>
               </div>
 
@@ -193,7 +350,9 @@ export default function MembershipPlansPage() {
                 </p>
 
                 <h2 className="mt-1 text-2xl font-bold text-foreground">
-                  {plansLoading ? "..." : totalMembers}
+                  {plansLoading
+                    ? "..."
+                    : totalMembers}
                 </h2>
               </div>
 
@@ -215,15 +374,22 @@ export default function MembershipPlansPage() {
             </h2>
 
             <p className="mt-1 text-xs text-muted-foreground">
-              Manage pricing, duration, features and plan
-              status.
+              Manage pricing, duration, features
+              and plan status.
             </p>
           </div>
 
           <div className="p-6">
             <MembershipPlanTable
               plans={membershipPlans}
+              total={membershipPlans.length}
               loading={plansLoading}
+              onView={handleViewPlan}
+              onEdit={handleEditPlan}
+              onToggleStatus={
+                handleTogglePlanStatus
+              }
+              onDelete={handleDeletePlan}
             />
           </div>
         </div>
@@ -247,6 +413,28 @@ export default function MembershipPlansPage() {
         onSuccess={handleCreatePlan}
         isLoading={
           createMembershipPlanMutation.isPending
+        }
+      />
+
+      {/* =====================================================
+          EDIT MEMBERSHIP PLAN MODAL
+      ====================================================== */}
+
+      <MembershipPlanModal
+        isOpen={showEditModal}
+        onClose={() => {
+          if (
+            !updateMembershipPlanMutation.isPending
+          ) {
+            setShowEditModal(false);
+            setSelectedPlan(null);
+          }
+        }}
+        mode="edit"
+        plan={selectedPlan}
+        onSuccess={handleUpdatePlan}
+        isLoading={
+          updateMembershipPlanMutation.isPending
         }
       />
     </>

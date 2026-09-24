@@ -65,6 +65,9 @@ export default function MemberTable({
   members = [],
   isLoading = false,
   isFetching = false,
+  onEdit,
+  onToggleStatus,
+  onDelete,
 }) {
   // =========================
   // PAGINATION
@@ -226,8 +229,7 @@ export default function MemberTable({
   // EDIT MEMBER
   // =========================
   const handleEditMember = (member) => {
-    console.log("Edit member:", member);
-
+    onEdit?.(member);
     setOpenAction(null);
   };
 
@@ -236,21 +238,18 @@ export default function MemberTable({
   // TOGGLE STATUS
   // =========================
   const handleToggleStatus = (member) => {
-    console.log("Toggle status:", member);
-
-    setOpenAction(null);
-  };
+  onToggleStatus?.(member);
+  setOpenAction(null);
+};
 
 
   // =========================
   // DELETE MEMBER
   // =========================
   const handleDeleteMember = (member) => {
-    console.log("Delete member:", member);
-
-    setOpenAction(null);
-  };
-
+  onDelete?.(member);
+  setOpenAction(null);
+};
 
   return (
     <div className="space-y-4">
@@ -521,9 +520,9 @@ export default function MemberTable({
                       <span className="text-sm text-muted-foreground">
                         {member.gender
                           ? member.gender.replaceAll(
-                              "_",
-                              " "
-                            )
+                            "_",
+                            " "
+                          )
                           : "-"}
                       </span>
 
@@ -564,8 +563,8 @@ export default function MemberTable({
                           text-xs
                           font-medium
                           ${getStatusClass(
-                            member.status
-                          )}
+                          member.status
+                        )}
                         `}
                       >
                         {member.status || "-"}
@@ -629,20 +628,20 @@ export default function MemberTable({
                         {openAction ===
                           member.id && (
 
-                          <>
+                            <>
 
-                            {/* BACKDROP */}
-                            <div
-                              className="fixed inset-0 z-10"
-                              onClick={() =>
-                                setOpenAction(null)
-                              }
-                            />
+                              {/* BACKDROP */}
+                              <div
+                                className="fixed inset-0 z-10"
+                                onClick={() =>
+                                  setOpenAction(null)
+                                }
+                              />
 
 
-                            {/* ACTION MENU */}
-                            <div
-                              className="
+                              {/* ACTION MENU */}
+                              <div
+                                className="
                                 absolute
                                 right-0
                                 top-9
@@ -656,17 +655,17 @@ export default function MemberTable({
                                 p-1
                                 shadow-xl
                               "
-                            >
+                              >
 
-                              {/* VIEW */}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleViewMember(
-                                    member
-                                  )
-                                }
-                                className="
+                                {/* VIEW */}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleViewMember(
+                                      member
+                                    )
+                                  }
+                                  className="
                                   flex
                                   w-full
                                   items-center
@@ -678,24 +677,24 @@ export default function MemberTable({
                                   text-sm
                                   hover:bg-secondary
                                 "
-                              >
+                                >
 
-                                <Eye size={15} />
+                                  <Eye size={15} />
 
-                                View Details
+                                  View Details
 
-                              </button>
+                                </button>
 
 
-                              {/* EDIT */}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleEditMember(
-                                    member
-                                  )
-                                }
-                                className="
+                                {/* EDIT */}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleEditMember(
+                                      member
+                                    )
+                                  }
+                                  className="
                                   flex
                                   w-full
                                   items-center
@@ -707,24 +706,24 @@ export default function MemberTable({
                                   text-sm
                                   hover:bg-secondary
                                 "
-                              >
+                                >
 
-                                <Pencil size={15} />
+                                  <Pencil size={15} />
 
-                                Edit Member
+                                  Edit Member
 
-                              </button>
+                                </button>
 
 
-                              {/* STATUS */}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleToggleStatus(
-                                    member
-                                  )
-                                }
-                                className="
+                                {/* STATUS */}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleToggleStatus(
+                                      member
+                                    )
+                                  }
+                                  className="
                                   flex
                                   w-full
                                   items-center
@@ -736,43 +735,43 @@ export default function MemberTable({
                                   text-sm
                                   hover:bg-secondary
                                 "
-                              >
+                                >
 
-                                {member.status ===
-                                "ACTIVE" ? (
+                                  {member.status ===
+                                    "ACTIVE" ? (
 
-                                  <>
-                                    <UserX
-                                      size={15}
-                                    />
+                                    <>
+                                      <UserX
+                                        size={15}
+                                      />
 
-                                    Deactivate
-                                  </>
+                                      Deactivate
+                                    </>
 
-                                ) : (
+                                  ) : (
 
-                                  <>
-                                    <UserCheck
-                                      size={15}
-                                    />
+                                    <>
+                                      <UserCheck
+                                        size={15}
+                                      />
 
-                                    Activate
-                                  </>
+                                      Activate
+                                    </>
 
-                                )}
+                                  )}
 
-                              </button>
+                                </button>
 
 
-                              {/* DELETE */}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleDeleteMember(
-                                    member
-                                  )
-                                }
-                                className="
+                                {/* DELETE */}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleDeleteMember(
+                                      member
+                                    )
+                                  }
+                                  className="
                                   flex
                                   w-full
                                   items-center
@@ -785,21 +784,21 @@ export default function MemberTable({
                                   text-destructive
                                   hover:bg-destructive/10
                                 "
-                              >
+                                >
 
-                                <Trash2
-                                  size={15}
-                                />
+                                  <Trash2
+                                    size={15}
+                                  />
 
-                                Delete Member
+                                  Delete Member
 
-                              </button>
+                                </button>
 
-                            </div>
+                              </div>
 
-                          </>
+                            </>
 
-                        )}
+                          )}
 
                       </div>
 
