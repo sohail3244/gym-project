@@ -1,4 +1,3 @@
-
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -6,6 +5,7 @@ import {
   ArrowRight,
   Home,
   CreditCard,
+  Download,
 } from "lucide-react";
 
 export default async function PaymentResultPage({
@@ -15,8 +15,13 @@ export default async function PaymentResultPage({
 
   const status = params?.status;
   const message = params?.message;
+  const paymentId = params?.paymentId;
 
   const isSuccess = status === "success";
+
+  // ---------------------------------------------------------
+  // UNKNOWN PAYMENT STATUS
+  // ---------------------------------------------------------
 
   if (!isSuccess && status !== "failed") {
     return (
@@ -49,8 +54,12 @@ export default async function PaymentResultPage({
     );
   }
 
+  // ---------------------------------------------------------
+  // PAYMENT RESULT
+  // ---------------------------------------------------------
+
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
       <div
         className={`w-full max-w-md rounded-2xl border bg-white p-8 text-center shadow-sm ${
           isSuccess
@@ -58,6 +67,7 @@ export default async function PaymentResultPage({
             : "border-red-200"
         }`}
       >
+        {/* STATUS ICON */}
         <div
           className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full ${
             isSuccess
@@ -78,29 +88,49 @@ export default async function PaymentResultPage({
           )}
         </div>
 
+        {/* TITLE */}
         <h1 className="mt-6 text-3xl font-bold text-slate-900">
           {isSuccess
             ? "Payment Successful!"
             : "Payment Failed"}
         </h1>
 
+        {/* DESCRIPTION */}
         <p className="mt-3 text-sm leading-6 text-slate-500">
           {isSuccess
             ? "Your registration and payment have been completed successfully."
             : "We could not complete your registration payment."}
         </p>
 
+        {/* SUCCESS */}
         {isSuccess ? (
           <>
+            {/* ACCOUNT ACTIVATED */}
             <div className="mt-6 rounded-xl bg-emerald-50 p-4">
               <p className="text-sm font-medium text-emerald-700">
                 Your account has been activated.
               </p>
             </div>
 
+            {/* DOWNLOAD RECEIPT */}
+            {paymentId && (
+              <a
+                href={`${process.env.NEXT_PUBLIC_API_BASE_URL}/payments/${encodeURIComponent(
+                  paymentId
+                )}/receipt`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                <Download size={17} />
+                Download Receipt
+              </a>
+            )}
+
+            {/* CONTINUE TO LOGIN */}
             <Link
               href="/login"
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
             >
               Continue to Login
               <ArrowRight size={17} />
@@ -108,6 +138,7 @@ export default async function PaymentResultPage({
           </>
         ) : (
           <>
+            {/* FAILURE MESSAGE */}
             <div className="mt-6 rounded-xl bg-red-50 p-4">
               <p className="text-sm font-medium text-red-700">
                 {message ||
@@ -115,6 +146,7 @@ export default async function PaymentResultPage({
               </p>
             </div>
 
+            {/* TRY AGAIN */}
             <Link
               href="/register"
               className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
@@ -125,9 +157,10 @@ export default async function PaymentResultPage({
           </>
         )}
 
+        {/* BACK TO HOME */}
         <Link
           href="/"
-          className="mt-3 inline-flex items-center justify-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900"
+          className="mt-4 inline-flex items-center justify-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900"
         >
           <Home size={16} />
           Back to Home

@@ -7,6 +7,7 @@ import {
   getPaymentById,
   updatePaymentStatus,
   deletePayment,
+  downloadPaymentReceipt,
 } from "../controllers/payment.controller.js";
 
 import authMiddleware from "../middleware/auth.middleware.js";
@@ -17,14 +18,25 @@ const router = express.Router();
 // ---------------------------------------------------------
 // PUBLIC REGISTRATION PAYMENT VERIFICATION
 // ---------------------------------------------------------
+
 router.post(
   "/registration/verify",
   verifyRegistrationPayment
 );
 
 // ---------------------------------------------------------
+// PUBLIC PAYMENT RECEIPT
+// ---------------------------------------------------------
+
+router.get(
+  "/:id/receipt",
+  downloadPaymentReceipt
+);
+
+// ---------------------------------------------------------
 // PROTECTED PAYMENT ROUTES
 // ---------------------------------------------------------
+
 router.use(authMiddleware);
 
 router.use(

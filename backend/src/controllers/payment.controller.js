@@ -340,8 +340,39 @@ export const verifyRegistrationPayment = async (req, res) => {
     return res.redirect(
       `${process.env.CLIENT_URL}/payment/result?status=failed&message=${encodeURIComponent(
         error.message ||
-          "Failed to verify registration payment"
+        "Failed to verify registration payment"
       )}`
     );
+  }
+};
+
+export const downloadPaymentReceipt = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment ID is required",
+      });
+    }
+
+    const result = await PaymentService.generatePaymentReceipt(id);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${result.fileName}"`
+    );
+
+    return res.send(result.pdfBuffer);
+  } catch (error) {
+    console.error("Download Payment Receipt Error:", error);
+
+    return res.status(400).json({
+      success: false,
+      message:
+        error?.message || "Failed to generate payment receipt",
+    });
   }
 };

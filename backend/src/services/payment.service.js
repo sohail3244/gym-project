@@ -1,5 +1,6 @@
 import prisma from "../prisma/prisma.js";
 import { verifyRazorpaySignature } from "./payment/razorpay.service.js";
+import PDFDocument from "pdfkit";
 
 const createPayment = async ({
   userId,
@@ -97,7 +98,7 @@ const createPayment = async ({
 
     endDate.setDate(
       endDate.getDate() +
-        subscription.plan.durationInDays
+      subscription.plan.durationInDays
     );
 
     await prisma.subscription.update({
@@ -188,7 +189,7 @@ const verifyRegistrationPayment = async ({
     const endDate = new Date(startDate);
     endDate.setDate(
       endDate.getDate() +
-        payment.subscription.plan.durationInDays
+      payment.subscription.plan.durationInDays
     );
 
     await tx.subscription.update({
@@ -404,7 +405,7 @@ const updatePaymentStatus = async (
     if (!subscription.startDate) {
       endDate.setDate(
         endDate.getDate() +
-          subscription.plan.durationInDays
+        subscription.plan.durationInDays
       );
     }
 
@@ -463,6 +464,312 @@ const deletePayment = async (id) => {
   };
 };
 
+const generatePaymentReceipt = async (id) => {
+  const payment = await prisma.payment.findUnique({
+    where: {
+      id,
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          email: true,
+          status: true,
+
+          business: {
+            select: {
+              businessName: true,
+              businessType: true,
+              mobileNumber: true,
+              email: true,
+              address: true,
+              city: true,
+              state: true,
+              pincode: true,
+            },
+          },
+        },
+      },
+
+      subscription: {
+        include: {
+          plan: true,
+        },
+      },
+    },
+  });
+
+  if (!payment) {
+    throw new Error("Payment not found");
+  }
+
+  const doc = new PDFDocument({
+    size: "A4",
+    margin: 50,
+  });
+
+  const chunks = [];
+
+  doc.on("data", (chunk) => {
+    chunks.push(chunk);
+  });
+
+  const pdfBufferPromise = new Promise((resolve, reject) => {
+    doc.on("end", () => {
+      resolve(Buffer.concat(chunks));
+    });
+
+    doc.on("error", reject);
+  });
+
+  // --------------------------------------------------
+  // RECEIPT HEADER
+  // --------------------------------------------------
+
+  doc
+    .fontSize(22)
+    .font("Helvetica-Bold")
+    .text("PAYMENT RECEIPT", {
+      align: "center",
+    });
+
+  doc.moveDown();
+
+  doc
+    .fontSize(11)
+    .font("Helvetica")
+    .text(
+      `Receipt Date: ${new Date(
+        payment.createdAt
+      ).toLocaleString("en-IN")}`,
+      {
+        align: "right",
+      }
+    );
+
+  doc.moveDown(2);
+
+  // --------------------------------------------------
+  // PAYMENT STATUS
+  // --------------------------------------------------
+
+  doc
+    .fontSize(14)
+    .font("Helvetica-Bold")
+    .text(`Payment Status: ${payment.status}`);
+
+  doc.moveDown();
+
+  // --------------------------------------------------
+  // ADMIN DETAILS
+  // --------------------------------------------------
+
+  doc
+    .fontSize(15)
+    .font("Helvetica-Bold")
+    .text("Admin Details");
+
+  doc.moveDown(0.5);
+
+  doc
+    .fontSize(11)
+    .font("Helvetica")
+    .text(`Name: ${payment.user?.name || "N/A"}`)
+    .text(`Username: ${payment.user?.username || "N/A"}`)
+    .text(`Email: ${payment.user?.email || "N/A"}`)
+    .text(`Account Status: ${payment.user?.status || "N/A"}`);
+
+  doc.moveDown();
+
+  // --------------------------------------------------
+  // BUSINESS DETAILS
+  // --------------------------------------------------
+
+  doc
+    .fontSize(15)
+    .font("Helvetica-Bold")
+    .text("Business Details");
+
+  doc.moveDown(0.5);
+
+  doc
+    .fontSize(11)
+    .font("Helvetica")
+    .text(
+      `Business Name: ${
+        payment.user?.business?.businessName || "N/A"
+      }`
+    )
+    .text(
+      `Business Type: ${
+        payment.user?.business?.businessType || "N/A"
+      }`
+    )
+    .text(
+      `Mobile Number: ${
+        payment.user?.business?.mobileNumber || "N/A"
+      }`
+    )
+    .text(
+      `Email: ${
+        payment.user?.business?.email || "N/A"
+      }`
+    )
+    .text(
+      `Address: ${
+        payment.user?.business?.address || "N/A"
+      }`
+    )
+    .text(
+      `City: ${
+        payment.user?.business?.city || "N/A"
+      }`
+    )
+    .text(
+      `State: ${
+        payment.user?.business?.state || "N/A"
+      }`
+    )
+    .text(
+      `Pincode: ${
+        payment.user?.business?.pincode || "N/A"
+      }`
+    );
+
+  doc.moveDown();
+
+  // --------------------------------------------------
+  // SUBSCRIPTION DETAILS
+  // --------------------------------------------------
+
+  doc
+    .fontSize(15)
+    .font("Helvetica-Bold")
+    .text("Subscription Details");
+
+  doc.moveDown(0.5);
+
+  doc
+    .fontSize(11)
+    .font("Helvetica")
+    .text(
+      `Plan: ${
+        payment.subscription?.plan?.name || "N/A"
+      }`
+    )
+    .text(
+      `Duration: ${
+        payment.subscription?.plan?.durationInDays || "N/A"
+      } Days`
+    )
+    .text(
+      `Subscription Status: ${
+        payment.subscription?.status || "N/A"
+      }`
+    );
+
+  doc.moveDown();
+
+  // --------------------------------------------------
+  // PAYMENT DETAILS
+  // --------------------------------------------------
+
+  doc
+    .fontSize(15)
+    .font("Helvetica-Bold")
+    .text("Payment Details");
+
+  doc.moveDown(0.5);
+
+  doc
+    .fontSize(11)
+    .font("Helvetica")
+    .text(
+      `Amount: ${payment.currency || "INR"} ${payment.amount}`
+    )
+    .text(
+      `Payment Method: ${
+        payment.paymentMethod || "N/A"
+      }`
+    )
+    .text(
+      `Transaction ID: ${
+        payment.transactionId || "N/A"
+      }`
+    )
+    .text(
+      `Razorpay Order ID: ${
+        payment.gatewayOrderId || "N/A"
+      }`
+    )
+    .text(
+      `Razorpay Payment ID: ${
+        payment.gatewayPaymentId || "N/A"
+      }`
+    )
+    .text(
+      `Payment Date: ${
+        payment.paidAt
+          ? new Date(payment.paidAt).toLocaleString("en-IN")
+          : "N/A"
+      }`
+    );
+
+  doc.moveDown(2);
+
+  // --------------------------------------------------
+  // ACCOUNT INFORMATION
+  // --------------------------------------------------
+
+  doc
+    .fontSize(15)
+    .font("Helvetica-Bold")
+    .text("Account Information");
+
+  doc.moveDown(0.5);
+
+  doc
+    .fontSize(11)
+    .font("Helvetica")
+    .text(
+      `Username: ${
+        payment.user?.username || "N/A"
+      }`
+    )
+    .text(
+      `Account Status: ${
+        payment.user?.status || "N/A"
+      }`
+    );
+
+  doc.moveDown(3);
+
+  // --------------------------------------------------
+  // FOOTER
+  // --------------------------------------------------
+
+  doc
+    .fontSize(9)
+    .fillColor("gray")
+    .text(
+      "This is a system generated payment receipt.",
+      {
+        align: "center",
+      }
+    );
+
+  doc.end();
+
+  const pdfBuffer = await pdfBufferPromise;
+
+  return {
+    pdfBuffer,
+    fileName: `payment-receipt-${payment.id}.pdf`,
+  };
+};
+
 export default {
   createPayment,
   verifyRegistrationPayment,
@@ -470,4 +777,5 @@ export default {
   getPaymentById,
   updatePaymentStatus,
   deletePayment,
+  generatePaymentReceipt,
 };
