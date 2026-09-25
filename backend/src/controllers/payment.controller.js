@@ -278,3 +278,70 @@ export const deletePayment = async (
     });
   }
 };
+
+export const verifyRegistrationPayment = async (req, res) => {
+  try {
+    const razorpayOrderId =
+      req.body.razorpayOrderId ||
+      req.body.razorpay_order_id;
+
+    const razorpayPaymentId =
+      req.body.razorpayPaymentId ||
+      req.body.razorpay_payment_id;
+
+    const razorpaySignature =
+      req.body.razorpaySignature ||
+      req.body.razorpay_signature;
+
+    if (!razorpayOrderId) {
+      return res.redirect(
+        `${process.env.CLIENT_URL}/payment/result?status=failed&message=${encodeURIComponent(
+          "Razorpay order ID is required"
+        )}`
+      );
+    }
+
+    if (!razorpayPaymentId) {
+      return res.redirect(
+        `${process.env.CLIENT_URL}/payment/result?status=failed&message=${encodeURIComponent(
+          "Razorpay payment ID is required"
+        )}`
+      );
+    }
+
+    if (!razorpaySignature) {
+      return res.redirect(
+        `${process.env.CLIENT_URL}/payment/result?status=failed&message=${encodeURIComponent(
+          "Razorpay signature is required"
+        )}`
+      );
+    }
+
+    const payment =
+      await PaymentService.verifyRegistrationPayment({
+        razorpayOrderId,
+        razorpayPaymentId,
+        razorpaySignature,
+      });
+
+    return res.redirect(
+      `${process.env.CLIENT_URL}/payment/result?status=success&paymentId=${encodeURIComponent(
+        payment.id
+      )}&razorpayPaymentId=${encodeURIComponent(
+        razorpayPaymentId
+      )}`
+    );
+  } catch (error) {
+    console.error(
+      "Verify Registration Payment Error:",
+      error
+    );
+
+    return res.redirect(
+      `${process.env.CLIENT_URL}/payment/result?status=failed&message=${encodeURIComponent(
+        error.message ||
+          "Failed to verify registration payment"
+      )}`
+    );
+  }
+};

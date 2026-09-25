@@ -1,4 +1,5 @@
 import prisma from "../prisma/prisma.js";
+import { verifyRazorpaySignature } from "./payment/razorpay.service.js";
 
 const createPayment = async ({
   userId,
@@ -112,6 +113,108 @@ const createPayment = async ({
   }
 
   return payment;
+};
+
+const verifyRegistrationPayment = async ({
+  razorpayOrderId,
+  razorpayPaymentId,
+  razorpaySignature,
+}) => {
+  if (!razorpayOrderId) {
+    throw new Error("Razorpay order ID is required");
+  }
+
+  if (!razorpayPaymentId) {
+    throw new Error("Razorpay payment ID is required");
+  }
+
+  if (!razorpaySignature) {
+    throw new Error("Razorpay signature is required");
+  }
+
+  // 1. Verify Razorpay signature
+  const isValidSignature = verifyRazorpaySignature({
+    orderId: razorpayOrderId,
+    paymentId: razorpayPaymentId,
+    signature: razorpaySignature,
+  });
+
+  if (!isValidSignature) {
+    throw new Error("Invalid Razorpay payment signature");
+  }
+
+  // 2. Find local payment using Razorpay Order ID
+  const payment = await prisma.payment.findFirst({
+    where: {
+      gatewayOrderId: razorpayOrderId,
+    },
+    include: {
+      user: true,
+      subscription: {
+        include: {
+          plan: true,
+        },
+      },
+    },
+  });
+
+  if (!payment) {
+    throw new Error("Registration payment not found");
+  }
+
+  // 3. Idempotency
+  if (payment.status === "SUCCESS") {
+    return payment;
+  }
+
+  // 4. Payment + subscription + user update
+  const result = await prisma.$transaction(async (tx) => {
+    const updatedPayment = await tx.payment.update({
+      where: {
+        id: payment.id,
+      },
+      data: {
+        status: "SUCCESS",
+        paymentMethod: "ONLINE",
+        transactionId: razorpayPaymentId,
+        gatewayPaymentId: razorpayPaymentId,
+        gatewaySignature: razorpaySignature,
+        paidAt: new Date(),
+      },
+    });
+
+    const startDate = new Date();
+
+    const endDate = new Date(startDate);
+    endDate.setDate(
+      endDate.getDate() +
+        payment.subscription.plan.durationInDays
+    );
+
+    await tx.subscription.update({
+      where: {
+        id: payment.subscriptionId,
+      },
+      data: {
+        status: "ACTIVE",
+        startDate,
+        endDate,
+      },
+    });
+
+    await tx.user.update({
+      where: {
+        id: payment.userId,
+      },
+      data: {
+        status: "ACTIVE",
+      },
+    });
+
+    return updatedPayment;
+  });
+
+  return result;
 };
 
 const getPayments = async ({
@@ -362,6 +465,7 @@ const deletePayment = async (id) => {
 
 export default {
   createPayment,
+  verifyRegistrationPayment,
   getPayments,
   getPaymentById,
   updatePaymentStatus,

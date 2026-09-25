@@ -2,6 +2,9 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 
 import prisma from "../prisma/prisma.js";
+import {
+  createRazorpayOrder,
+} from "./payment/razorpay.service.js";
 
 const getEncryptionKey = () => {
   const key = process.env.PASSWORD_ENCRYPTION_KEY;
@@ -311,204 +314,186 @@ const registerAdmin = async ({
   planId,
 }) => {
   if (email) {
-    const existingEmail =
-      await prisma.user.findUnique({
-        where: {
-          email,
-        },
-      });
+    const existingEmail = await prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
 
     if (existingEmail) {
-      throw new Error(
-        "Email is already registered"
-      );
+      throw new Error("Email is already registered");
     }
   }
 
-  const existingMobile =
-    await prisma.business.findFirst({
-      where: {
-        mobileNumber,
-      },
-    });
+  const existingMobile = await prisma.business.findFirst({
+    where: {
+      mobileNumber,
+    },
+  });
 
   if (existingMobile) {
-    throw new Error(
-      "Mobile number is already registered"
-    );
+    throw new Error("Mobile number is already registered");
   }
 
-  const superAdmin =
-    await prisma.user.findFirst({
-      where: {
-        role: "SUPER_ADMIN",
-        status: "ACTIVE",
-      },
-    });
+  const superAdmin = await prisma.user.findFirst({
+    where: {
+      role: "SUPER_ADMIN",
+      status: "ACTIVE",
+    },
+  });
 
   if (!superAdmin) {
-    throw new Error(
-      "Active Super Admin not found"
-    );
+    throw new Error("Active Super Admin not found");
   }
 
-  const username =
-    await generateUsername("admin");
+  const username = await generateUsername("admin");
 
-  const passwordHash =
-    await bcrypt.hash(
-      password,
-      12
-    );
+  const passwordHash = await bcrypt.hash(password, 12);
 
-  const encryptedPassword =
-    encryptPassword(password);
+  const encryptedPassword = encryptPassword(password);
 
-  const result =
-    await prisma.$transaction(
-      async (tx) => {
-        const plan =
-          await getPlan(
-            tx,
-            planId
-          );
+  const result = await prisma.$transaction(
+    async (tx) => {
+      const plan = await getPlan(tx, planId);
 
-        const admin =
-          await tx.user.create({
-            data: {
-              name,
-              username,
-              email:
-                email || null,
-              passwordHash,
-              encryptedPassword,
-              role: "ADMIN",
-              status: "PENDING",
-              parentId:
-                superAdmin.id,
-              isFirstLogin: true,
-            },
-          });
+      const admin = await tx.user.create({
+        data: {
+          name,
+          username,
+          email: email || null,
+          passwordHash,
+          encryptedPassword,
+          role: "ADMIN",
+          status: "PENDING",
+          parentId: superAdmin.id,
+          isFirstLogin: true,
+        },
+      });
 
-        const business =
-          await tx.business.create({
-            data: {
-              userId: admin.id,
-              businessName,
-              businessType,
-              mobileNumber,
-              email:
-                email || null,
-              address:
-                address || null,
-              city:
-                city || null,
-              state:
-                state || null,
-              pincode:
-                pincode || null,
-            },
-          });
+      const business = await tx.business.create({
+        data: {
+          userId: admin.id,
+          businessName,
+          businessType,
+          mobileNumber,
+          email: email || null,
+          address: address || null,
+          city: city || null,
+          state: state || null,
+          pincode: pincode || null,
+        },
+      });
 
-        const subscription =
-          await tx.subscription.create({
-            data: {
-              userId: admin.id,
-              planId: plan.id,
-              status: "PENDING",
-            },
-          });
+      const subscription = await tx.subscription.create({
+        data: {
+          userId: admin.id,
+          planId: plan.id,
+          status: "PENDING",
+        },
+      });
 
-        const payment =
-          await tx.payment.create({
-            data: {
-              userId: admin.id,
-              subscriptionId:
-                subscription.id,
-              amount:
-                Number(plan.price),
-              status: "PENDING",
-            },
-          });
+      const payment = await tx.payment.create({
+        data: {
+          userId: admin.id,
+          subscriptionId: subscription.id,
+          amount: Number(plan.price),
+          status: "PENDING",
+        },
+      });
 
-        return {
-          admin,
-          business,
-          plan,
-          subscription,
-          payment,
-        };
-      }
-    );
+      return {
+        admin,
+        business,
+        plan,
+        subscription,
+        payment,
+      };
+    }
+  );
+
+  // ---------------------------------------------------------
+  // CREATE RAZORPAY ORDER
+  // ---------------------------------------------------------
+
+  const razorpayOrder = await createRazorpayOrder({
+    amount: Number(result.payment.amount),
+
+    receipt: `REG_${Date.now()}_${result.payment.id.slice(-8)}`,
+
+    notes: {
+      adminId: result.admin.id,
+      subscriptionId: result.subscription.id,
+      paymentId: result.payment.id,
+      planId: result.plan.id,
+    },
+  });
+
+  // ---------------------------------------------------------
+  // SAVE RAZORPAY ORDER ID
+  // ---------------------------------------------------------
+
+  await prisma.payment.update({
+    where: {
+      id: result.payment.id,
+    },
+    data: {
+      gatewayOrderId: razorpayOrder.id,
+    },
+  });
+
+  // ---------------------------------------------------------
+  // RESPONSE
+  // ---------------------------------------------------------
 
   return {
     admin: {
-      id:
-        result.admin.id,
-      name:
-        result.admin.name,
-      username:
-        result.admin.username,
-      email:
-        result.admin.email,
-      role:
-        result.admin.role,
-      status:
-        result.admin.status,
-      parentId:
-        result.admin.parentId,
-      isFirstLogin:
-        result.admin.isFirstLogin,
-      createdAt:
-        result.admin.createdAt,
+      id: result.admin.id,
+      name: result.admin.name,
+      username: result.admin.username,
+      email: result.admin.email,
+      role: result.admin.role,
+      status: result.admin.status,
+      parentId: result.admin.parentId,
+      isFirstLogin: result.admin.isFirstLogin,
+      createdAt: result.admin.createdAt,
     },
 
     business: {
-      id:
-        result.business.id,
-      businessName:
-        result.business.businessName,
-      businessType:
-        result.business.businessType,
-      mobileNumber:
-        result.business.mobileNumber,
-      email:
-        result.business.email,
-      address:
-        result.business.address,
-      city:
-        result.business.city,
-      state:
-        result.business.state,
-      pincode:
-        result.business.pincode,
-      createdAt:
-        result.business.createdAt,
+      id: result.business.id,
+      businessName: result.business.businessName,
+      businessType: result.business.businessType,
+      mobileNumber: result.business.mobileNumber,
+      email: result.business.email,
+      address: result.business.address,
+      city: result.business.city,
+      state: result.business.state,
+      pincode: result.business.pincode,
+      createdAt: result.business.createdAt,
     },
 
     plan: {
-      id:
-        result.plan.id,
-      name:
-        result.plan.name,
-      price:
-        result.plan.price,
+      id: result.plan.id,
+      name: result.plan.name,
+      price: result.plan.price,
     },
 
     subscription: {
-      id:
-        result.subscription.id,
-      status:
-        result.subscription.status,
+      id: result.subscription.id,
+      status: result.subscription.status,
     },
 
     payment: {
-      id:
-        result.payment.id,
-      amount:
-        result.payment.amount,
-      status:
-        result.payment.status,
+      id: result.payment.id,
+      amount: result.payment.amount,
+      status: result.payment.status,
+      gatewayOrderId: razorpayOrder.id,
+    },
+
+    razorpay: {
+      keyId: process.env.RAZORPAY_KEY_ID,
+      orderId: razorpayOrder.id,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
     },
   };
 };

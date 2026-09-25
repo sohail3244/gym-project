@@ -14,19 +14,80 @@ import roleMiddleware from "../middleware/role.middleware.js";
 
 const router = express.Router();
 
-router.use(authMiddleware);
-router.use(roleMiddleware("SUPER_ADMIN"));
+/*
+|--------------------------------------------------------------------------
+| Create Plan
+|--------------------------------------------------------------------------
+| Only SUPER_ADMIN can create a plan
+*/
+router.post(
+  "/",
+  authMiddleware,
+  roleMiddleware("SUPER_ADMIN"),
+  createPlan
+);
 
-router.post("/", createPlan);
+/*
+|--------------------------------------------------------------------------
+| Get All Plans
+|--------------------------------------------------------------------------
+| SUPER_ADMIN + ADMIN can view plans
+*/
+router.get(
+  "/",
+  getPlans
+);
 
-router.get("/", getPlans);
+/*
+|--------------------------------------------------------------------------
+| Get Plan By ID
+|--------------------------------------------------------------------------
+| SUPER_ADMIN + ADMIN can view a single plan
+*/
+router.get(
+  "/:id",
+  authMiddleware,
+  roleMiddleware("SUPER_ADMIN", "ADMIN"),
+  getPlanById
+);
 
-router.get("/:id", getPlanById);
+/*
+|--------------------------------------------------------------------------
+| Update Plan
+|--------------------------------------------------------------------------
+| Only SUPER_ADMIN can update a plan
+*/
+router.patch(
+  "/:id",
+  authMiddleware,
+  roleMiddleware("SUPER_ADMIN"),
+  updatePlan
+);
 
-router.patch("/:id", updatePlan);
+/*
+|--------------------------------------------------------------------------
+| Update Plan Status
+|--------------------------------------------------------------------------
+| Only SUPER_ADMIN can change plan status
+*/
+router.patch(
+  "/:id/status",
+  authMiddleware,
+  roleMiddleware("SUPER_ADMIN"),
+  updatePlanStatus
+);
 
-router.patch("/:id/status", updatePlanStatus);
-
-router.delete("/:id", deletePlan);
+/*
+|--------------------------------------------------------------------------
+| Delete Plan
+|--------------------------------------------------------------------------
+| Only SUPER_ADMIN can delete a plan
+*/
+router.delete(
+  "/:id",
+  authMiddleware,
+  roleMiddleware("SUPER_ADMIN"),
+  deletePlan
+);
 
 export default router;
