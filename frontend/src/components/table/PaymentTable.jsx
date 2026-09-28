@@ -1,14 +1,25 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
 import {
-  MoreVertical,
   Eye,
   CheckCircle,
   XCircle,
   Clock,
   RefreshCcw,
+  MoreVertical,
+  Download,
 } from "lucide-react";
+
+import SearchBar from "@/components/ui/SearchBar";
+import StatusFilter from "@/components/ui/StatusFilter";
+import DateFilter from "@/components/ui/DateFilter";
 
 import {
   Table,
@@ -19,117 +30,14 @@ import {
   TablePagination,
 } from "./core";
 
-import DateFilter from "../ui/DateFilter";
-import SearchBar from "../ui/SearchBar";
-import StatusFilter from "../ui/StatusFilter";
-
-const DUMMY_PAYMENTS = [
-  {
-    id: "pay_001",
-    userId: "usr_001",
-    userName: "Rahul Sharma",
-    username: "admin_A12B3C",
-    subscriptionId: "sub_001",
-    planName: "Premium",
-    amount: 2999,
-    currency: "INR",
-    paymentMethod: "UPI",
-    status: "PAID",
-    transactionId: "TXN_20260829001",
-    gatewayOrderId: "order_RH001",
-    gatewayPaymentId: "pay_RH001",
-    paidAt: "2026-08-29T10:30:00",
-    createdAt: "2026-08-29T10:25:00",
-  },
-  {
-    id: "pay_002",
-    userId: "usr_002",
-    userName: "Amit Verma",
-    username: "admin_X92KLM",
-    subscriptionId: "sub_002",
-    planName: "Basic",
-    amount: 999,
-    currency: "INR",
-    paymentMethod: "CARD",
-    status: "PENDING",
-    transactionId: null,
-    gatewayOrderId: "order_AM002",
-    gatewayPaymentId: null,
-    paidAt: null,
-    createdAt: "2026-08-28T14:15:00",
-  },
-  {
-    id: "pay_003",
-    userId: "usr_003",
-    userName: "Priya Singh",
-    username: "admin_P34XYZ",
-    subscriptionId: "sub_003",
-    planName: "Enterprise",
-    amount: 7999,
-    currency: "INR",
-    paymentMethod: "NET_BANKING",
-    status: "PAID",
-    transactionId: "TXN_20260827003",
-    gatewayOrderId: "order_PS003",
-    gatewayPaymentId: "pay_PS003",
-    paidAt: "2026-08-27T09:45:00",
-    createdAt: "2026-08-27T09:40:00",
-  },
-  {
-    id: "pay_004",
-    userId: "usr_004",
-    userName: "Vikas Kumar",
-    username: "admin_VK78QWE",
-    subscriptionId: "sub_004",
-    planName: "Premium",
-    amount: 2999,
-    currency: "INR",
-    paymentMethod: "UPI",
-    status: "FAILED",
-    transactionId: null,
-    gatewayOrderId: "order_VK004",
-    gatewayPaymentId: null,
-    paidAt: null,
-    createdAt: "2026-08-26T18:20:00",
-  },
-  {
-    id: "pay_005",
-    userId: "usr_005",
-    userName: "Neha Gupta",
-    username: "admin_NG55ABC",
-    subscriptionId: "sub_005",
-    planName: "Basic",
-    amount: 999,
-    currency: "INR",
-    paymentMethod: "CARD",
-    status: "REFUNDED",
-    transactionId: "TXN_20260825005",
-    gatewayOrderId: "order_NG005",
-    gatewayPaymentId: "pay_NG005",
-    paidAt: "2026-08-25T11:10:00",
-    createdAt: "2026-08-25T11:05:00",
-  },
-  {
-    id: "pay_006",
-    userId: "usr_006",
-    userName: "Arjun Mehta",
-    username: "admin_AM66DEF",
-    subscriptionId: "sub_006",
-    planName: "Enterprise",
-    amount: 7999,
-    currency: "INR",
-    paymentMethod: "UPI",
-    status: "PAID",
-    transactionId: "TXN_20260824006",
-    gatewayOrderId: "order_AM006",
-    gatewayPaymentId: "pay_AM006",
-    paidAt: "2026-08-24T16:30:00",
-    createdAt: "2026-08-24T16:25:00",
-  },
-];
+/* =========================================================
+   FORMAT DATE
+========================================================= */
 
 const formatDate = (date) => {
-  if (!date) return "-";
+  if (!date) {
+    return "-";
+  }
 
   return new Date(date).toLocaleDateString("en-IN", {
     day: "2-digit",
@@ -138,141 +46,529 @@ const formatDate = (date) => {
   });
 };
 
-const formatAmount = (amount, currency = "INR") => {
+/* =========================================================
+   FORMAT AMOUNT
+========================================================= */
+
+const formatAmount = (
+  amount,
+  currency = "INR"
+) => {
+  if (amount === null || amount === undefined) {
+    return "-";
+  }
+
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency,
     maximumFractionDigits: 2,
-  }).format(amount);
+  }).format(Number(amount));
 };
 
-const getStatusClass = (status) => {
+/* =========================================================
+   PAYMENT METHOD LABEL
+========================================================= */
+
+const formatPaymentMethod = (method) => {
+  if (!method) {
+    return "-";
+  }
+
+  return method
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) =>
+      char.toUpperCase()
+    );
+};
+
+/* =========================================================
+   STATUS CLASS
+========================================================= */
+
+const getStatusClasses = (status) => {
   switch (status) {
-    case "PAID":
-      return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
+    case "SUCCESS":
+      return `
+        bg-emerald-500/10
+        text-emerald-600
+        dark:text-emerald-400
+      `;
 
     case "PENDING":
-      return "bg-amber-500/10 text-amber-600 dark:text-amber-400";
+      return `
+        bg-amber-500/10
+        text-amber-600
+        dark:text-amber-400
+      `;
 
     case "FAILED":
-      return "bg-red-500/10 text-red-600 dark:text-red-400";
+      return `
+        bg-red-500/10
+        text-red-600
+        dark:text-red-400
+      `;
 
     case "REFUNDED":
-      return "bg-blue-500/10 text-blue-600 dark:text-blue-400";
+      return `
+        bg-blue-500/10
+        text-blue-600
+        dark:text-blue-400
+      `;
 
     default:
-      return "bg-muted text-foreground";
+      return `
+        bg-muted
+        text-muted-foreground
+      `;
   }
 };
 
-export default function PaymentTable() {
-  const [payments] = useState(DUMMY_PAYMENTS);
+/* =========================================================
+   STATUS ICON
+========================================================= */
 
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+const StatusIcon = ({ status }) => {
+  switch (status) {
+    case "SUCCESS":
+      return <CheckCircle size={13} />;
+
+    case "PENDING":
+      return <Clock size={13} />;
+
+    case "FAILED":
+      return <XCircle size={13} />;
+
+    case "REFUNDED":
+      return <RefreshCcw size={13} />;
+
+    default:
+      return null;
+  }
+};
+
+/* =========================================================
+   MAIN COMPONENT
+========================================================= */
+
+export default function PaymentTable({
+  payments = [],
+  isLoading = false,
+  isFetching = false,
+  onView,
+  onDownloadReceipt,
+}) {
+  /* =======================================================
+     STATES
+  ======================================================== */
 
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [date, setDate] = useState("");
 
-  const [openAction, setOpenAction] = useState(null);
+  const [status, setStatus] =
+    useState("ALL");
+
+  const [dateFilter, setDateFilter] =
+    useState("ALL");
+
+  const [page, setPage] = useState(1);
+
+  const [rowsPerPage, setRowsPerPage] =
+    useState(10);
+
+  const [selectedRows, setSelectedRows] =
+    useState([]);
+
+  const [openActionId, setOpenActionId] =
+    useState(null);
+
+  const actionMenuRef = useRef(null);
+
+  /* =======================================================
+     RESET PAGE WHEN FILTER CHANGES
+  ======================================================== */
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    search,
+    status,
+    dateFilter,
+    rowsPerPage,
+  ]);
+
+  /* =======================================================
+     CLOSE ACTION MENU ON OUTSIDE CLICK
+  ======================================================== */
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (
+        actionMenuRef.current &&
+        !actionMenuRef.current.contains(
+          event.target
+        )
+      ) {
+        setOpenActionId(null);
+      }
+    };
+
+    document.addEventListener(
+      "mousedown",
+      handleOutsideClick
+    );
+
+    return () => {
+      document.removeEventListener(
+        "mousedown",
+        handleOutsideClick
+      );
+    };
+  }, []);
+
+  /* =======================================================
+     FILTER PAYMENTS
+  ======================================================== */
 
   const filteredPayments = useMemo(() => {
-    return payments.filter((payment) => {
-      const searchText = search.toLowerCase();
+    let result = [...payments];
 
-      const matchesSearch =
-        !search ||
-        payment.userName.toLowerCase().includes(searchText) ||
-        payment.username.toLowerCase().includes(searchText) ||
-        payment.id.toLowerCase().includes(searchText) ||
-        payment.planName.toLowerCase().includes(searchText) ||
-        payment.transactionId?.toLowerCase().includes(searchText);
+    /* -----------------------------------------------------
+       SEARCH
+    ----------------------------------------------------- */
 
-      const matchesStatus =
-        !status || payment.status === status;
+    if (search.trim()) {
+      const searchValue =
+        search.trim().toLowerCase();
 
-      let matchesDate = true;
+      result = result.filter((payment) => {
+        return (
+          payment.user?.name
+            ?.toLowerCase()
+            .includes(searchValue) ||
 
-      if (date) {
-        const paymentDate = new Date(payment.createdAt)
-          .toISOString()
-          .split("T")[0];
+          payment.user?.username
+            ?.toLowerCase()
+            .includes(searchValue) ||
 
-        matchesDate = paymentDate === date;
-      }
+          payment.user?.email
+            ?.toLowerCase()
+            .includes(searchValue) ||
 
-      return (
-        matchesSearch &&
-        matchesStatus &&
-        matchesDate
+          payment.id
+            ?.toLowerCase()
+            .includes(searchValue) ||
+
+          payment.transactionId
+            ?.toLowerCase()
+            .includes(searchValue) ||
+
+          payment.gatewayOrderId
+            ?.toLowerCase()
+            .includes(searchValue) ||
+
+          payment.gatewayPaymentId
+            ?.toLowerCase()
+            .includes(searchValue) ||
+
+          payment.subscription?.plan?.name
+            ?.toLowerCase()
+            .includes(searchValue)
+        );
+      });
+    }
+
+    /* -----------------------------------------------------
+       STATUS
+    ----------------------------------------------------- */
+
+    if (status !== "ALL") {
+      result = result.filter(
+        (payment) =>
+          payment.status === status
       );
-    });
-  }, [payments, search, status, date]);
+    }
 
-  const total = filteredPayments.length;
+    /* -----------------------------------------------------
+       DATE
+    ----------------------------------------------------- */
+
+    if (dateFilter !== "ALL") {
+      const now = new Date();
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const yesterday = new Date(today);
+      yesterday.setDate(
+        yesterday.getDate() - 1
+      );
+
+      const yesterdayEnd = new Date(today);
+      yesterdayEnd.setMilliseconds(-1);
+
+      result = result.filter((payment) => {
+        if (!payment.createdAt) {
+          return false;
+        }
+
+        const paymentDate = new Date(
+          payment.createdAt
+        );
+
+        switch (dateFilter) {
+          case "TODAY":
+            return paymentDate >= today;
+
+          case "YESTERDAY":
+            return (
+              paymentDate >= yesterday &&
+              paymentDate <= yesterdayEnd
+            );
+
+          case "LAST_7_DAYS": {
+            const last7Days = new Date(now);
+
+            last7Days.setDate(
+              last7Days.getDate() - 7
+            );
+
+            return paymentDate >= last7Days;
+          }
+
+          case "LAST_30_DAYS": {
+            const last30Days = new Date(now);
+
+            last30Days.setDate(
+              last30Days.getDate() - 30
+            );
+
+            return paymentDate >= last30Days;
+          }
+
+          case "THIS_MONTH": {
+            const startOfMonth = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              1
+            );
+
+            return (
+              paymentDate >= startOfMonth
+            );
+          }
+
+          default:
+            return true;
+        }
+      });
+    }
+
+    return result;
+  }, [
+    payments,
+    search,
+    status,
+    dateFilter,
+  ]);
+
+  /* =======================================================
+     PAGINATION
+  ======================================================== */
+
+  const totalFilteredRows =
+    filteredPayments.length;
 
   const totalPages = Math.max(
     1,
-    Math.ceil(total / rowsPerPage)
+    Math.ceil(
+      totalFilteredRows / rowsPerPage
+    )
   );
 
-  const paginatedPayments = filteredPayments.slice(
-    (page - 1) * rowsPerPage,
-    page * rowsPerPage
-  );
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
-  const handleSearch = (value) => {
-    setSearch(value);
-    setPage(1);
-  };
+  const paginatedPayments =
+    filteredPayments.slice(
+      (page - 1) * rowsPerPage,
+      page * rowsPerPage
+    );
 
-  const handleStatusChange = (value) => {
-    setStatus(value);
-    setPage(1);
-  };
+  /* =======================================================
+     ROWS PER PAGE
+  ======================================================== */
 
-  const handleDateChange = (value) => {
-    setDate(value);
-    setPage(1);
-  };
-
-  const handleRowsPerPageChange = (value) => {
+  const handleRowsPerPageChange = (
+    value
+  ) => {
     setRowsPerPage(Number(value));
     setPage(1);
   };
 
-  const clearFilters = () => {
-    setSearch("");
-    setStatus("");
-    setDate("");
-    setPage(1);
+  /* =======================================================
+     SELECT ROW
+  ======================================================== */
+
+  const handleSelectRow = (id) => {
+    setSelectedRows((previous) => {
+      if (previous.includes(id)) {
+        return previous.filter(
+          (rowId) => rowId !== id
+        );
+      }
+
+      return [...previous, id];
+    });
   };
+
+  /* =======================================================
+     SELECT ALL CURRENT PAGE
+  ======================================================== */
+
+  const handleSelectAll = () => {
+    const currentPageIds =
+      paginatedPayments.map(
+        (payment) => payment.id
+      );
+
+    const allSelected =
+      currentPageIds.length > 0 &&
+      currentPageIds.every((id) =>
+        selectedRows.includes(id)
+      );
+
+    if (allSelected) {
+      setSelectedRows((previous) =>
+        previous.filter(
+          (id) =>
+            !currentPageIds.includes(id)
+        )
+      );
+    } else {
+      setSelectedRows((previous) => [
+        ...new Set([
+          ...previous,
+          ...currentPageIds,
+        ]),
+      ]);
+    }
+  };
+
+  const allCurrentPageSelected =
+    paginatedPayments.length > 0 &&
+    paginatedPayments.every((payment) =>
+      selectedRows.includes(payment.id)
+    );
+
+  /* =======================================================
+     ACTION HANDLER
+  ======================================================== */
+
+  const handleAction = (
+    action,
+    payment
+  ) => {
+    setOpenActionId(null);
+
+    switch (action) {
+      case "view":
+        onView?.(payment);
+        break;
+
+      case "receipt":
+        onDownloadReceipt?.(payment);
+        break;
+
+      default:
+        break;
+    }
+  };
+
+  /* =======================================================
+     LOADING
+  ======================================================== */
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-16 animate-pulse rounded-2xl bg-muted" />
+
+        <div className="overflow-hidden rounded-2xl border border-border">
+          <div className="space-y-3 p-6">
+            {Array.from({ length: 6 }).map(
+              (_, index) => (
+                <div
+                  key={index}
+                  className="h-12 animate-pulse rounded-lg bg-muted"
+                />
+              )
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* =======================================================
+     RENDER
+  ======================================================== */
 
   return (
     <div className="space-y-4">
 
-      {/* =========================
-          FILTERS
-      ========================== */}
+      {/* =================================================
+          TOOLBAR
+      ================================================== */}
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div
+        className="
+          flex
+          flex-col
+          gap-3
+          rounded-2xl
+          border
+          border-border
+          bg-card
+          p-4
+          shadow-sm
+          lg:flex-row
+          lg:items-center
+          lg:justify-between
+        "
+      >
+        {/* Search */}
 
-        <div className="flex flex-1 flex-col gap-3 sm:flex-row">
+        <SearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Search payments..."
+          className="w-full lg:max-w-sm"
+        />
 
-          <SearchBar
-            value={search}
-            onChange={handleSearch}
-            placeholder="Search payments..."
-          />
+        {/* Filters */}
 
+        <div
+          className="
+            flex
+            flex-wrap
+            items-center
+            gap-2
+          "
+        >
           <StatusFilter
             value={status}
-            onChange={handleStatusChange}
+            onChange={setStatus}
             options={[
               {
-                value: "PAID",
-                label: "Paid",
+                value: "ALL",
+                label: "All Status",
+              },
+              {
+                value: "SUCCESS",
+                label: "Success",
               },
               {
                 value: "PENDING",
@@ -290,83 +586,103 @@ export default function PaymentTable() {
           />
 
           <DateFilter
-            value={date}
-            onChange={handleDateChange}
+            value={dateFilter}
+            onChange={setDateFilter}
           />
-
         </div>
-
-        {(search || status || date) && (
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="
-              inline-flex
-              h-10
-              items-center
-              justify-center
-              gap-2
-              rounded-xl
-              border
-              border-border
-              px-4
-              text-sm
-              font-medium
-              text-muted-foreground
-              transition
-              hover:bg-secondary
-              hover:text-foreground
-            "
-          >
-            <RefreshCcw size={15} />
-            Clear
-          </button>
-        )}
-
       </div>
 
-      {/* =========================
+      {/* =================================================
           TABLE
-      ========================== */}
+      ================================================== */}
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-background">
+      <div className="overflow-x-auto rounded-2xl border border-border bg-card">
 
         <Table>
+
+          {/* =================================================
+              HEADER
+          ================================================== */}
 
           <TableHeader>
 
             <TableRow>
 
+              {/* Checkbox */}
+
               <TableCell
                 header
-                className="w-12.5"
+                className="w-12"
               >
+                <input
+                  type="checkbox"
+                  checked={
+                    allCurrentPageSelected
+                  }
+                  onChange={
+                    handleSelectAll
+                  }
+                  className="
+                    h-4
+                    w-4
+                    cursor-pointer
+                    rounded
+                    border-border
+                    accent-primary
+                  "
+                  aria-label="Select all payments"
+                />
+              </TableCell>
+
+              {/* Number */}
+
+              <TableCell header>
                 #
               </TableCell>
+
+              {/* User */}
 
               <TableCell header>
                 User
               </TableCell>
 
+              {/* Plan */}
+
               <TableCell header>
                 Plan
               </TableCell>
+
+              {/* Amount */}
 
               <TableCell header>
                 Amount
               </TableCell>
 
+              {/* Method */}
+
               <TableCell header>
                 Method
               </TableCell>
+
+              {/* Transaction */}
+
+              <TableCell header>
+                Transaction
+              </TableCell>
+
+              {/* Status */}
 
               <TableCell header>
                 Status
               </TableCell>
 
+              {/* Paid */}
+
               <TableCell header>
                 Paid At
               </TableCell>
+
+              {/* Actions */}
 
               <TableCell
                 header
@@ -379,254 +695,422 @@ export default function PaymentTable() {
 
           </TableHeader>
 
+          {/* =================================================
+              BODY
+          ================================================== */}
+
           <TableBody>
 
-            {paginatedPayments.length === 0 ? (
+            {isFetching &&
+              !isLoading && (
+                <TableRow>
+                  <TableCell
+                    colSpan={11}
+                    align="center"
+                    className="py-4"
+                  >
+                    <span className="text-xs text-muted-foreground">
+                      Updating payments...
+                    </span>
+                  </TableCell>
+                </TableRow>
+              )}
 
+            {paginatedPayments.length ===
+            0 ? (
               <TableRow>
 
                 <TableCell
-                  colSpan={8}
+                  colSpan={11}
                   align="center"
-                  className="py-14"
+                  className="py-16"
                 >
-                  <div className="flex flex-col items-center gap-2">
 
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                  <div className="flex flex-col items-center justify-center">
+
+                    <div
+                      className="
+                        mb-3
+                        flex
+                        h-12
+                        w-12
+                        items-center
+                        justify-center
+                        rounded-full
+                        bg-muted
+                        text-muted-foreground
+                      "
+                    >
                       <XCircle
                         size={20}
-                        className="text-muted-foreground"
                       />
                     </div>
 
-                    <p className="text-sm font-medium text-foreground">
+                    <p
+                      className="
+                        text-sm
+                        font-semibold
+                        text-foreground
+                      "
+                    >
                       No payments found
                     </p>
 
-                    <p className="text-xs text-muted-foreground">
-                      Try changing your search or filters.
+                    <p
+                      className="
+                        mt-1
+                        text-xs
+                        text-muted-foreground
+                      "
+                    >
+                      Try changing your search
+                      or filters.
                     </p>
 
                   </div>
+
                 </TableCell>
 
               </TableRow>
-
             ) : (
-
               paginatedPayments.map(
-                (payment, index) => (
+                (payment, index) => {
 
-                  <TableRow
-                    key={payment.id}
-                  >
+                  const isSelected =
+                    selectedRows.includes(
+                      payment.id
+                    );
 
-                    {/* INDEX */}
+                  const isActionOpen =
+                    openActionId ===
+                    payment.id;
 
-                    <TableCell>
-                      {(page - 1) *
-                        rowsPerPage +
-                        index +
-                        1}
-                    </TableCell>
+                  const plan =
+                    payment.subscription
+                      ?.plan;
 
-                    {/* USER */}
+                  return (
+                    <TableRow
+                      key={payment.id}
+                    >
 
-                    <TableCell>
+                      {/* Checkbox */}
 
-                      <div>
-                        <p className="font-medium text-foreground">
-                          {payment.userName}
-                        </p>
+                      <TableCell>
 
-                        <p className="text-xs text-muted-foreground">
-                          @{payment.username}
-                        </p>
-                      </div>
-
-                    </TableCell>
-
-                    {/* PLAN */}
-
-                    <TableCell>
-
-                      <div>
-                        <p className="font-medium text-foreground">
-                          {payment.planName}
-                        </p>
-
-                        <p className="text-xs text-muted-foreground">
-                          {payment.subscriptionId}
-                        </p>
-                      </div>
-
-                    </TableCell>
-
-                    {/* AMOUNT */}
-
-                    <TableCell>
-
-                      <span className="font-semibold text-foreground">
-                        {formatAmount(
-                          payment.amount,
-                          payment.currency
-                        )}
-                      </span>
-
-                    </TableCell>
-
-                    {/* METHOD */}
-
-                    <TableCell>
-
-                      <span className="text-sm text-foreground">
-                        {payment.paymentMethod
-                          ?.replaceAll("_", " ") ||
-                          "-"}
-                      </span>
-
-                    </TableCell>
-
-                    {/* STATUS */}
-
-                    <TableCell>
-
-                      <span
-                        className={`
-                          inline-flex
-                          items-center
-                          gap-1.5
-                          rounded-full
-                          px-2.5
-                          py-1
-                          text-xs
-                          font-medium
-                          ${getStatusClass(
-                            payment.status
-                          )}
-                        `}
-                      >
-
-                        {payment.status ===
-                          "PAID" && (
-                          <CheckCircle
-                            size={12}
-                          />
-                        )}
-
-                        {payment.status ===
-                          "PENDING" && (
-                          <Clock
-                            size={12}
-                          />
-                        )}
-
-                        {payment.status ===
-                          "FAILED" && (
-                          <XCircle
-                            size={12}
-                          />
-                        )}
-
-                        {payment.status ===
-                          "REFUNDED" && (
-                          <RefreshCcw
-                            size={12}
-                          />
-                        )}
-
-                        {payment.status}
-
-                      </span>
-
-                    </TableCell>
-
-                    {/* PAID AT */}
-
-                    <TableCell>
-
-                      <span className="text-sm text-muted-foreground">
-                        {formatDate(
-                          payment.paidAt
-                        )}
-                      </span>
-
-                    </TableCell>
-
-                    {/* ACTION */}
-
-                    <TableCell align="right">
-
-                      <div className="relative inline-flex">
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOpenAction(
-                              openAction ===
-                                payment.id
-                                ? null
-                                : payment.id
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() =>
+                            handleSelectRow(
+                              payment.id
                             )
                           }
                           className="
-                            flex
-                            h-8
-                            w-8
-                            items-center
-                            justify-center
-                            rounded-lg
-                            text-muted-foreground
-                            transition
-                            hover:bg-secondary
-                            hover:text-foreground
+                            h-4
+                            w-4
+                            cursor-pointer
+                            rounded
+                            border-border
+                            accent-primary
+                          "
+                          aria-label={`Select payment ${payment.id}`}
+                        />
+
+                      </TableCell>
+
+                      {/* Number */}
+
+                      <TableCell>
+                        {(page - 1) *
+                          rowsPerPage +
+                          index +
+                          1}
+                      </TableCell>
+
+                      {/* User */}
+
+                      <TableCell>
+
+                        <div className="min-w-48">
+
+                          <p
+                            className="
+                              font-semibold
+                              text-foreground
+                            "
+                          >
+                            {payment.user
+                              ?.name ||
+                              "-"}
+                          </p>
+
+                          <p
+                            className="
+                              mt-0.5
+                              text-xs
+                              text-muted-foreground
+                            "
+                          >
+                            @
+                            {payment.user
+                              ?.username ||
+                              "-"}
+                          </p>
+
+                          {payment.user
+                            ?.email && (
+                            <p
+                              className="
+                                mt-0.5
+                                text-xs
+                                text-muted-foreground
+                              "
+                            >
+                              {
+                                payment.user
+                                  .email
+                              }
+                            </p>
+                          )}
+
+                        </div>
+
+                      </TableCell>
+
+                      {/* Plan */}
+
+                      <TableCell>
+
+                        <div className="min-w-32">
+
+                          <p
+                            className="
+                              font-medium
+                              text-foreground
+                            "
+                          >
+                            {plan?.name ||
+                              "-"}
+                          </p>
+
+                          <p
+                            className="
+                              mt-0.5
+                              text-xs
+                              text-muted-foreground
+                            "
+                          >
+                            {payment.subscriptionId ||
+                              "-"}
+                          </p>
+
+                        </div>
+
+                      </TableCell>
+
+                      {/* Amount */}
+
+                      <TableCell>
+
+                        <span
+                          className="
+                            whitespace-nowrap
+                            font-semibold
+                            text-foreground
                           "
                         >
-                          <MoreVertical
-                            size={17}
-                          />
-                        </button>
+                          {formatAmount(
+                            payment.amount,
+                            payment.currency
+                          )}
+                        </span>
 
-                        {openAction ===
-                          payment.id && (
+                      </TableCell>
 
-                          <>
+                      {/* Method */}
 
-                            <div
-                              className="fixed inset-0 z-10"
-                              onClick={() =>
-                                setOpenAction(null)
+                      <TableCell>
+
+                        <span
+                          className="
+                            whitespace-nowrap
+                            text-sm
+                            text-foreground
+                          "
+                        >
+                          {formatPaymentMethod(
+                            payment.paymentMethod
+                          )}
+                        </span>
+
+                      </TableCell>
+
+                      {/* Transaction */}
+
+                      <TableCell>
+
+                        <div className="min-w-44">
+
+                          <p
+                            className="
+                              text-sm
+                              font-medium
+                              text-foreground
+                            "
+                          >
+                            {payment.transactionId ||
+                              "-"}
+                          </p>
+
+                          {payment.gatewayOrderId && (
+                            <p
+                              className="
+                                mt-0.5
+                                text-xs
+                                text-muted-foreground
+                              "
+                            >
+                              Order:{" "}
+                              {
+                                payment.gatewayOrderId
                               }
-                            />
+                            </p>
+                          )}
 
+                        </div>
+
+                      </TableCell>
+
+                      {/* Status */}
+
+                      <TableCell>
+
+                        <span
+                          className={`
+                            inline-flex
+                            items-center
+                            gap-1.5
+                            whitespace-nowrap
+                            rounded-full
+                            px-2.5
+                            py-1
+                            text-xs
+                            font-semibold
+                            ${getStatusClasses(
+                              payment.status
+                            )}
+                          `}
+                        >
+
+                          <StatusIcon
+                            status={
+                              payment.status
+                            }
+                          />
+
+                          {payment.status}
+
+                        </span>
+
+                      </TableCell>
+
+                      {/* Paid At */}
+
+                      <TableCell>
+
+                        <span
+                          className="
+                            whitespace-nowrap
+                            text-xs
+                            text-muted-foreground
+                          "
+                        >
+                          {formatDate(
+                            payment.paidAt
+                          )}
+                        </span>
+
+                      </TableCell>
+
+                      {/* Actions */}
+
+                      <TableCell align="right">
+
+                        <div
+                          ref={
+                            isActionOpen
+                              ? actionMenuRef
+                              : null
+                          }
+                          className="
+                            relative
+                            inline-block
+                            text-left
+                          "
+                        >
+
+                          {/* Three Dot Button */}
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setOpenActionId(
+                                isActionOpen
+                                  ? null
+                                  : payment.id
+                              )
+                            }
+                            className="
+                              flex
+                              h-8
+                              w-8
+                              items-center
+                              justify-center
+                              rounded-lg
+                              text-muted-foreground
+                              transition
+                              hover:bg-secondary
+                              hover:text-foreground
+                              active:scale-95
+                            "
+                            aria-label={`Actions for payment ${payment.id}`}
+                          >
+                            <MoreVertical
+                              size={18}
+                            />
+                          </button>
+
+                          {/* Action Menu */}
+
+                          {isActionOpen && (
                             <div
                               className="
                                 absolute
                                 right-0
-                                top-9
-                                z-20
-                                w-40
+                                z-30
+                                mt-2
+                                w-48
                                 overflow-hidden
                                 rounded-xl
                                 border
                                 border-border
-                                bg-background
+                                bg-popover
                                 p-1
                                 shadow-xl
                               "
                             >
 
+                              {/* View */}
+
                               <button
                                 type="button"
-                                onClick={() => {
-                                  console.log(
-                                    "View payment:",
+                                onClick={() =>
+                                  handleAction(
+                                    "view",
                                     payment
-                                  );
-                                  setOpenAction(
-                                    null
-                                  );
-                                }}
+                                  )
+                                }
                                 className="
                                   flex
                                   w-full
@@ -638,44 +1122,92 @@ export default function PaymentTable() {
                                   text-left
                                   text-sm
                                   text-foreground
+                                  transition
                                   hover:bg-secondary
                                 "
                               >
-                                <Eye size={15} />
+                                <Eye
+                                  size={15}
+                                />
+
                                 View Details
                               </button>
 
+                              {/* Receipt */}
+
+                              {payment.status ===
+                                "SUCCESS" && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleAction(
+                                      "receipt",
+                                      payment
+                                    )
+                                  }
+                                  className="
+                                    flex
+                                    w-full
+                                    items-center
+                                    gap-2
+                                    rounded-lg
+                                    px-3
+                                    py-2
+                                    text-left
+                                    text-sm
+                                    text-foreground
+                                    transition
+                                    hover:bg-secondary
+                                  "
+                                >
+                                  <Download
+                                    size={15}
+                                  />
+
+                                  Download Receipt
+                                </button>
+                              )}
+
                             </div>
+                          )}
 
-                          </>
-                        )}
+                        </div>
 
-                      </div>
+                      </TableCell>
 
-                    </TableCell>
-
-                  </TableRow>
-
-                )
+                    </TableRow>
+                  );
+                }
               )
-
             )}
 
           </TableBody>
+
+          {/* =================================================
+              PAGINATION
+          ================================================== */}
 
           <tfoot>
 
             <tr>
 
-              <td colSpan={8}>
+              <td colSpan={11}>
 
                 <TablePagination
                   page={page}
                   totalPages={totalPages}
-                  totalRows={total}
-                  selectedRows={0}
-                  rowsPerPage={rowsPerPage}
-                  onPageChange={setPage}
+                  totalRows={
+                    totalFilteredRows
+                  }
+                  selectedRows={
+                    selectedRows.length
+                  }
+                  rowsPerPage={
+                    rowsPerPage
+                  }
+                  onPageChange={
+                    setPage
+                  }
                   onRowsPerPageChange={
                     handleRowsPerPageChange
                   }
