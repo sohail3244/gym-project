@@ -20,7 +20,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { useLogout } from "@/lib/hooks/useAuth";
+import { useAuth, useLogout } from "@/lib/hooks/useAuth";
 
 const pageTitles = {
   "/dashboard": "Overview",
@@ -47,6 +47,7 @@ export default function DashboardNavbar({
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
   const mobileSearchRef = useRef(null);
+  const { user } = useAuth();
 
   // Handle hydration mismatch and device detection
   useEffect(() => {
@@ -241,15 +242,18 @@ export default function DashboardNavbar({
                 aria-haspopup="true"
               >
                 <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-linear-to-br from-primary to-primary/80 text-primary-foreground font-semibold text-[10px] sm:text-xs ring-2 ring-primary/20">
-                  AR
+                  {user.name
+                    .split(" ")
+                    .map((name) => name.charAt(0))
+                    .join("")}
                 </div>
                 <div className="hidden sm:block text-left leading-tight">
                   <p className="text-xs font-semibold text-foreground">
-                    Alex Rivers
+                    {user.name}
                   </p>
                   <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-                    <ShieldCheck size={10} className="text-primary" /> Super
-                    Admin
+                    <ShieldCheck size={10} className="text-primary" /> 
+                    {user.role}
                   </span>
                 </div>
                 <ChevronDown
@@ -270,10 +274,10 @@ export default function DashboardNavbar({
                   <div className="absolute right-0 top-11 sm:top-12 z-50 w-56 sm:w-64 animate-in fade-in zoom-in-95 rounded-2xl border border-border bg-popover p-1.5 shadow-xl shadow-foreground/5 duration-100">
                     <div className="px-3 py-2 border-b border-border">
                       <p className="text-xs font-medium text-foreground">
-                        Signed in as
+                        {user.name}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
-                        alex.rivers@gymadmin.io
+                        {user.email}
                       </p>
                     </div>
 
@@ -286,14 +290,14 @@ export default function DashboardNavbar({
                         <User size={15} className="text-muted-foreground" />
                         Profile & Account
                       </Link>
-                      <Link
+                      {/* <Link
                         href="/dashboard/settings"
                         onClick={() => setMenuOpen(false)}
                         className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-foreground/80 transition-all hover:bg-accent hover:text-foreground"
                       >
                         <Settings size={15} className="text-muted-foreground" />
                         Settings
-                      </Link>
+                      </Link> */}
                     </div>
 
                     <div className="border-t border-border pt-1">

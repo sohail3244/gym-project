@@ -26,10 +26,12 @@ import {
   ReceiptIndianRupee,
   Gem,
   ShieldCheck,
+  User,
 } from "lucide-react";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 export default function Sidebar({
   isOpen,
@@ -40,13 +42,14 @@ export default function Sidebar({
   isTablet,
   role,
 }) {
+  const { user } = useAuth();
+
+  const currentRole = role?.toUpperCase();
   const pathname = usePathname();
 
   /* =====================================================
      NORMALIZE ROLE
   ===================================================== */
-
-  const currentRole = role?.toUpperCase();
 
   /* =====================================================
      SUPER ADMIN MENU
@@ -170,10 +173,7 @@ export default function Sidebar({
             hover:bg-secondary
           "
         >
-          <X
-            size={20}
-            className="text-foreground"
-          />
+          <X size={20} className="text-foreground" />
         </button>
       )}
 
@@ -209,7 +209,6 @@ export default function Sidebar({
         `}
       >
         <div className="flex h-full flex-col">
-
           {/* =================================================
               BRAND
           ================================================= */}
@@ -243,7 +242,7 @@ export default function Sidebar({
               "
             >
               <span className="text-sm font-bold text-primary-foreground">
-                A
+                <User/>
               </span>
             </div>
 
@@ -251,15 +250,26 @@ export default function Sidebar({
               <div className="min-w-0 flex-1">
                 <h1
                   className="
-                    truncate
-                    text-sm
-                    font-bold
-                    leading-tight
-                    text-foreground
-                  "
+    truncate
+    text-sm
+    font-bold
+    leading-tight
+    text-foreground
+  "
                 >
-                  Acme Inc.
+                  {user?.name || "Admin"}
                 </h1>
+                <p
+  className="
+    mt-0.5
+    text-[10px]
+    font-medium
+    uppercase
+    text-primary
+  "
+>
+  {currentRole || user?.role || "User"}
+</p>
               </div>
             )}
 
@@ -274,22 +284,12 @@ export default function Sidebar({
                   transition-colors
                   hover:bg-secondary
                 "
-                aria-label={
-                  isCollapsed
-                    ? "Expand sidebar"
-                    : "Collapse sidebar"
-                }
+                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
                 {isCollapsed ? (
-                  <ChevronRight
-                    size={16}
-                    className="text-muted-foreground"
-                  />
+                  <ChevronRight size={16} className="text-muted-foreground" />
                 ) : (
-                  <ChevronLeft
-                    size={16}
-                    className="text-muted-foreground"
-                  />
+                  <ChevronLeft size={16} className="text-muted-foreground" />
                 )}
               </button>
             )}
@@ -338,9 +338,7 @@ export default function Sidebar({
 
                 const isActive =
                   pathname === item.href ||
-                  pathname?.startsWith(
-                    item.href + "/"
-                  );
+                  pathname?.startsWith(item.href + "/");
 
                 return (
                   <Link
@@ -372,11 +370,7 @@ export default function Sidebar({
 
                       ${!showText ? "justify-center" : ""}
                     `}
-                    title={
-                      !showText
-                        ? item.label
-                        : ""
-                    }
+                    title={!showText ? item.label : ""}
                   >
                     <Icon
                       size={18}
@@ -393,9 +387,7 @@ export default function Sidebar({
                     />
 
                     {showText && (
-                      <span className="flex-1 truncate">
-                        {item.label}
-                      </span>
+                      <span className="flex-1 truncate">{item.label}</span>
                     )}
 
                     {isActive && showText && (
@@ -458,44 +450,42 @@ export default function Sidebar({
                   to-primary/10
                 "
               >
-                <span className="text-xs font-bold text-primary">
-                  A
-                </span>
+                <span className="text-xs font-bold text-primary">A</span>
               </div>
 
               {showText && (
                 <div className="min-w-0 flex-1">
                   <p
                     className="
-                      truncate
-                      text-sm
-                      font-medium
-                      text-foreground
-                    "
+    truncate
+    text-sm
+    font-medium
+    text-foreground
+  "
                   >
-                    Alex Johnson
+                    {user?.name || "Admin"}
                   </p>
 
                   <p
                     className="
-                      truncate
-                      text-xs
-                      text-muted-foreground
-                    "
+    truncate
+    text-xs
+    text-muted-foreground
+  "
                   >
-                    admin@acme.com
+                    {user?.email || "No email"}
                   </p>
 
                   <p
                     className="
-                      mt-0.5
-                      text-[10px]
-                      font-medium
-                      uppercase
-                      text-primary
-                    "
+    mt-0.5
+    text-[10px]
+    font-medium
+    uppercase
+    text-primary
+  "
                   >
-                    {currentRole || "User"}
+                    {currentRole || user?.role || "User"}
                   </p>
                 </div>
               )}

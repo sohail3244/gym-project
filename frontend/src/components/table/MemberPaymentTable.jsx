@@ -10,174 +10,6 @@ import {
   TablePagination,
 } from "./core";
 
-const DUMMY_MEMBER_PAYMENTS = [
-  {
-    id: "mpay_001",
-    adminId: "admin_001",
-    memberId: "member_001",
-    membershipId: "membership_001",
-    member: {
-      name: "Rahul Sharma",
-      mobileNumber: "9876543210",
-    },
-    membership: {
-      name: "Monthly Fitness",
-    },
-    amount: "999.00",
-    currency: "INR",
-    paymentMethod: "CASH",
-    status: "SUCCESS",
-    transactionId: "TXN-MP-10001",
-    notes: "Monthly membership payment",
-    paidAt: "2026-08-29T10:30:00Z",
-    createdAt: "2026-08-29T10:30:00Z",
-  },
-  {
-    id: "mpay_002",
-    adminId: "admin_001",
-    memberId: "member_002",
-    membershipId: "membership_002",
-    member: {
-      name: "Amit Verma",
-      mobileNumber: "9876501234",
-    },
-    membership: {
-      name: "Quarterly Fitness",
-    },
-    amount: "2499.00",
-    currency: "INR",
-    paymentMethod: "UPI",
-    status: "SUCCESS",
-    transactionId: "TXN-MP-10002",
-    notes: "Quarterly membership",
-    paidAt: "2026-08-28T14:20:00Z",
-    createdAt: "2026-08-28T14:20:00Z",
-  },
-  {
-    id: "mpay_003",
-    adminId: "admin_001",
-    memberId: "member_003",
-    membershipId: "membership_003",
-    member: {
-      name: "Priya Singh",
-      mobileNumber: "9876512345",
-    },
-    membership: {
-      name: "Annual Premium",
-    },
-    amount: "7999.00",
-    currency: "INR",
-    paymentMethod: "CARD",
-    status: "SUCCESS",
-    transactionId: "TXN-MP-10003",
-    notes: "Annual premium membership",
-    paidAt: "2026-08-27T09:15:00Z",
-    createdAt: "2026-08-27T09:15:00Z",
-  },
-  {
-    id: "mpay_004",
-    adminId: "admin_001",
-    memberId: "member_004",
-    membershipId: "membership_004",
-    member: {
-      name: "Vikas Meena",
-      mobileNumber: "9876523456",
-    },
-    membership: {
-      name: "Monthly Fitness",
-    },
-    amount: "999.00",
-    currency: "INR",
-    paymentMethod: "CASH",
-    status: "PENDING",
-    transactionId: null,
-    notes: "Payment pending",
-    paidAt: null,
-    createdAt: "2026-08-26T11:40:00Z",
-  },
-  {
-    id: "mpay_005",
-    adminId: "admin_001",
-    memberId: "member_005",
-    membershipId: "membership_005",
-    member: {
-      name: "Neha Gupta",
-      mobileNumber: "9876534567",
-    },
-    membership: {
-      name: "Student Plan",
-    },
-    amount: "599.00",
-    currency: "INR",
-    paymentMethod: "UPI",
-    status: "SUCCESS",
-    transactionId: "TXN-MP-10005",
-    notes: "Student discount plan",
-    paidAt: "2026-08-25T16:10:00Z",
-    createdAt: "2026-08-25T16:10:00Z",
-  },
-  {
-    id: "mpay_006",
-    adminId: "admin_001",
-    memberId: "member_006",
-    membershipId: null,
-    member: {
-      name: "Rohit Kumar",
-      mobileNumber: "9876545678",
-    },
-    membership: null,
-    amount: "500.00",
-    currency: "INR",
-    paymentMethod: "CASH",
-    status: "FAILED",
-    transactionId: "TXN-MP-10006",
-    notes: "Payment failed",
-    paidAt: null,
-    createdAt: "2026-08-24T12:25:00Z",
-  },
-  {
-    id: "mpay_007",
-    adminId: "admin_001",
-    memberId: "member_007",
-    membershipId: "membership_007",
-    member: {
-      name: "Pooja Sharma",
-      mobileNumber: "9876556789",
-    },
-    membership: {
-      name: "Half Yearly",
-    },
-    amount: "4499.00",
-    currency: "INR",
-    paymentMethod: "CARD",
-    status: "SUCCESS",
-    transactionId: "TXN-MP-10007",
-    notes: null,
-    paidAt: "2026-08-23T10:45:00Z",
-    createdAt: "2026-08-23T10:45:00Z",
-  },
-  {
-    id: "mpay_008",
-    adminId: "admin_001",
-    memberId: "member_008",
-    membershipId: "membership_008",
-    member: {
-      name: "Karan Joshi",
-      mobileNumber: "9876567890",
-    },
-    membership: {
-      name: "Premium Monthly",
-    },
-    amount: "1499.00",
-    currency: "INR",
-    paymentMethod: "UPI",
-    status: "SUCCESS",
-    transactionId: "TXN-MP-10008",
-    notes: "Premium membership",
-    paidAt: "2026-08-22T13:30:00Z",
-    createdAt: "2026-08-22T13:30:00Z",
-  },
-];
 
 const getStatusClass = (status) => {
   switch (status) {
@@ -208,7 +40,7 @@ const getPaymentMethodLabel = (method) => {
 };
 
 export default function MemberPaymentTable({
-  payments = DUMMY_MEMBER_PAYMENTS,
+  payments = [],
   total,
 }) {
   const [page, setPage] = useState(1);
@@ -418,12 +250,12 @@ export default function MemberPaymentTable({
               Paid At
             </TableCell>
 
-            <TableCell
+            {/* <TableCell
               header
               align="right"
             >
               Actions
-            </TableCell>
+            </TableCell> */}
           </TableRow>
         </TableHeader>
 
@@ -536,7 +368,7 @@ export default function MemberPaymentTable({
                   </TableCell>
 
                   {/* Actions */}
-                  <TableCell align="right">
+                  {/* <TableCell align="right">
                     <button
                       type="button"
                       className="
@@ -554,7 +386,7 @@ export default function MemberPaymentTable({
                     >
                       View
                     </button>
-                  </TableCell>
+                  </TableCell> */}
                 </TableRow>
               )
             )

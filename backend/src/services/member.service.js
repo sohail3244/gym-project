@@ -36,22 +36,40 @@ const createMember = async (adminId, data) => {
     city,
     state,
     pincode,
+
+    // Membership details
+    membershipPlanId,
+    startDate,
+
+    // Payment details
+    paymentMethod,
+    transactionId,
+    paymentNotes,
+    paidAt,
   } = data;
 
-  if (!name || !mobileNumber) {
-    throw new Error(
-      "Name and mobile number are required"
-    );
+  if (!name || !name.trim()) {
+    throw new Error("Name is required");
   }
 
+  if (!mobileNumber || !mobileNumber.trim()) {
+    throw new Error("Mobile number is required");
+  }
+
+  if (!membershipPlanId) {
+    throw new Error("Membership plan is required");
+  }
+
+  /*
+   * Check duplicate email
+   */
   if (email) {
-    const existingMember =
-      await prisma.member.findFirst({
-        where: {
-          adminId,
-          email,
-        },
-      });
+    const existingMember = await prisma.member.findFirst({
+      where: {
+        adminId,
+        email: email.trim(),
+      },
+    });
 
     if (existingMember) {
       throw new Error(
@@ -60,13 +78,15 @@ const createMember = async (adminId, data) => {
     }
   }
 
-  const existingMobile =
-    await prisma.member.findFirst({
-      where: {
-        adminId,
-        mobileNumber,
-      },
-    });
+  /*
+   * Check duplicate mobile
+   */
+  const existingMobile = await prisma.member.findFirst({
+    where: {
+      adminId,
+      mobileNumber: mobileNumber.trim(),
+    },
+  });
 
   if (existingMobile) {
     throw new Error(
@@ -74,28 +94,214 @@ const createMember = async (adminId, data) => {
     );
   }
 
-  const member = await prisma.member.create({
-    data: {
-      adminId,
-      name: name.trim(),
-      mobileNumber: mobileNumber.trim(),
-      email: email || null,
-      gender: gender || null,
-      dateOfBirth: dateOfBirth
-        ? new Date(dateOfBirth)
-        : null,
-      address: address || null,
-      city: city || null,
-      state: state || null,
-      pincode: pincode || null,
-      status: "ACTIVE",
-    },
-  });
+  /*
+   * Validate membership plan
+   */
+  const membershipPlan =
+    await prisma.membershipPlan.findFirst({
+      where: {
+        id: membershipPlanId,
+        adminId,
+        status: "ACTIVE",
+      },
+    });
 
-  return member;
+  if (!membershipPlan) {
+    throw new Error(
+      "Membership plan not found or inactive"
+    );
+  }
+
+  /*
+   * Payment method validation
+   */
+  const validPaymentMethods = [
+    "ONLINE",
+    "CASH",
+    "BANK_TRANSFER",
+    "UPI",
+    "CARD",
+  ];
+
+  if (
+    paymentMethod &&
+    !validPaymentMethods.includes(paymentMethod)
+  ) {
+    throw new Error("Invalid payment method");
+  }
+
+  /*
+   * Transaction ID duplicate check
+   */
+  if (transactionId) {
+    const existingPayment =
+      await prisma.memberPayment.findUnique({
+        where: {
+          transactionId: transactionId.trim(),
+        },
+      });
+
+    if (existingPayment) {
+      throw new Error(
+        "Transaction ID already exists"
+      );
+    }
+  }
+
+  /*
+   * Calculate membership dates
+   */
+  const membershipStartDate = startDate
+    ? new Date(startDate)
+    : new Date();
+
+  if (Number.isNaN(membershipStartDate.getTime())) {
+    throw new Error("Invalid membership start date");
+  }
+
+  const membershipEndDate = new Date(
+    membershipStartDate
+  );
+
+  membershipEndDate.setDate(
+    membershipEndDate.getDate() +
+      membershipPlan.durationInDays
+  );
+
+  /*
+   * Create everything in one transaction
+   */
+  const result = await prisma.$transaction(
+    async (tx) => {
+      /*
+       * 1. Create Member
+       */
+      const member = await tx.member.create({
+        data: {
+          adminId,
+
+          name: name.trim(),
+
+          mobileNumber:
+            mobileNumber.trim(),
+
+          email: email
+            ? email.trim()
+            : null,
+
+          gender: gender || null,
+
+          dateOfBirth: dateOfBirth
+            ? new Date(dateOfBirth)
+            : null,
+
+          address:
+            address || null,
+
+          city:
+            city || null,
+
+          state:
+            state || null,
+
+          pincode:
+            pincode || null,
+
+          status: "ACTIVE",
+        },
+      });
+
+      /*
+       * 2. Create Membership
+       */
+      const membership =
+        await tx.membership.create({
+          data: {
+            memberId: member.id,
+
+            membershipPlanId:
+              membershipPlan.id,
+
+            membershipName:
+              membershipPlan.name,
+
+            amount:
+              membershipPlan.price,
+
+            startDate:
+              membershipStartDate,
+
+            endDate:
+              membershipEndDate,
+
+            status: "ACTIVE",
+          },
+          include: {
+            membershipPlan: true,
+          },
+        });
+
+      /*
+       * 3. Create Payment
+       *
+       * Payment amount automatically comes
+       * from selected membership plan.
+       */
+      const payment =
+        await tx.memberPayment.create({
+          data: {
+            adminId,
+
+            memberId:
+              member.id,
+
+            membershipId:
+              membership.id,
+
+            amount:
+              membershipPlan.price,
+
+            currency: "INR",
+
+            paymentMethod:
+              paymentMethod || null,
+
+            status: "SUCCESS",
+
+            transactionId:
+              transactionId
+                ? transactionId.trim()
+                : null,
+
+            notes:
+              paymentNotes || null,
+
+            paidAt: paidAt
+              ? new Date(paidAt)
+              : new Date(),
+          },
+        });
+
+      /*
+       * 4. Return complete response
+       */
+      return {
+        member,
+
+        membership,
+
+        payment,
+      };
+    }
+  );
+
+  return result;
 };
 
-const getAllMembers = async (adminId, query) => {
+const getAllMembers = async (
+  adminId,
+  query
+) => {
   await verifyAdmin(adminId);
 
   const {
@@ -116,7 +322,8 @@ const getAllMembers = async (adminId, query) => {
   );
 
   const skip =
-    (pageNumber - 1) * limitNumber;
+    (pageNumber - 1) *
+    limitNumber;
 
   const where = {
     adminId,
@@ -150,10 +357,35 @@ const getAllMembers = async (adminId, query) => {
     await prisma.$transaction([
       prisma.member.findMany({
         where,
+
+        include: {
+          memberships: {
+            include: {
+              membershipPlan: true,
+            },
+
+            orderBy: {
+              createdAt: "desc",
+            },
+
+            take: 1,
+          },
+
+          payments: {
+            orderBy: {
+              createdAt: "desc",
+            },
+
+            take: 1,
+          },
+        },
+
         orderBy: {
           createdAt: "desc",
         },
+
         skip,
+
         take: limitNumber,
       }),
 
@@ -164,10 +396,12 @@ const getAllMembers = async (adminId, query) => {
 
   return {
     members,
+
     pagination: {
       page: pageNumber,
       limit: limitNumber,
       total,
+
       totalPages: Math.ceil(
         total / limitNumber
       ),
@@ -186,6 +420,32 @@ const getMemberById = async (
       where: {
         id: memberId,
         adminId,
+      },
+
+      include: {
+        memberships: {
+          include: {
+            membershipPlan: true,
+          },
+
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+
+        payments: {
+          include: {
+            membership: {
+              include: {
+                membershipPlan: true,
+              },
+            },
+          },
+
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
       },
     });
 
@@ -232,7 +492,10 @@ const updateMember = async (
       await prisma.member.findFirst({
         where: {
           adminId,
-          mobileNumber,
+
+          mobileNumber:
+            mobileNumber.trim(),
+
           NOT: {
             id: memberId,
           },
@@ -251,7 +514,9 @@ const updateMember = async (
       await prisma.member.findFirst({
         where: {
           adminId,
-          email,
+
+          email: email.trim(),
+
           NOT: {
             id: memberId,
           },
@@ -274,25 +539,34 @@ const updateMember = async (
       );
     }
 
-    updateData.name = name.trim();
+    updateData.name =
+      name.trim();
   }
 
-  if (mobileNumber !== undefined) {
+  if (
+    mobileNumber !== undefined
+  ) {
     updateData.mobileNumber =
       mobileNumber.trim();
   }
 
   if (email !== undefined) {
     updateData.email =
-      email === "" ? null : email;
+      email === ""
+        ? null
+        : email.trim();
   }
 
   if (gender !== undefined) {
     updateData.gender =
-      gender === "" ? null : gender;
+      gender === ""
+        ? null
+        : gender;
   }
 
-  if (dateOfBirth !== undefined) {
+  if (
+    dateOfBirth !== undefined
+  ) {
     updateData.dateOfBirth =
       dateOfBirth
         ? new Date(dateOfBirth)
@@ -301,25 +575,36 @@ const updateMember = async (
 
   if (address !== undefined) {
     updateData.address =
-      address === "" ? null : address;
+      address === ""
+        ? null
+        : address;
   }
 
   if (city !== undefined) {
     updateData.city =
-      city === "" ? null : city;
+      city === ""
+        ? null
+        : city;
   }
 
   if (state !== undefined) {
     updateData.state =
-      state === "" ? null : state;
+      state === ""
+        ? null
+        : state;
   }
 
   if (pincode !== undefined) {
     updateData.pincode =
-      pincode === "" ? null : pincode;
+      pincode === ""
+        ? null
+        : pincode;
   }
 
-  if (Object.keys(updateData).length === 0) {
+  if (
+    Object.keys(updateData).length ===
+    0
+  ) {
     throw new Error(
       "No member data provided"
     );
@@ -329,6 +614,7 @@ const updateMember = async (
     where: {
       id: memberId,
     },
+
     data: updateData,
   });
 };
@@ -346,7 +632,9 @@ const updateMemberStatus = async (
     "SUSPENDED",
   ];
 
-  if (!allowedStatuses.includes(status)) {
+  if (
+    !allowedStatuses.includes(status)
+  ) {
     throw new Error(
       "Invalid member status"
     );
@@ -361,13 +649,16 @@ const updateMemberStatus = async (
     });
 
   if (!member) {
-    throw new Error("Member not found");
+    throw new Error(
+      "Member not found"
+    );
   }
 
   return prisma.member.update({
     where: {
       id: memberId,
     },
+
     data: {
       status,
     },
@@ -389,7 +680,9 @@ const deleteMember = async (
     });
 
   if (!member) {
-    throw new Error("Member not found");
+    throw new Error(
+      "Member not found"
+    );
   }
 
   await prisma.member.delete({

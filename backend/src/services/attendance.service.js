@@ -154,7 +154,7 @@ export const getAllAttendance = async (adminId, filters = {}) => {
   }
 
   const [attendance, total] = await prisma.$transaction([
-    prisma.attendance.findMany({
+    prisma.staffAttendance.findMany({
       where,
       skip,
       take: limitNumber,
@@ -174,7 +174,7 @@ export const getAllAttendance = async (adminId, filters = {}) => {
       },
     }),
 
-    prisma.attendance.count({
+    prisma.staffAttendance.count({
       where,
     }),
   ]);
@@ -195,7 +195,7 @@ export const getAllAttendance = async (adminId, filters = {}) => {
  * Get Attendance By ID
  */
 export const getAttendanceById = async (adminId, attendanceId) => {
-  const attendance = await prisma.attendance.findFirst({
+  const attendance = await prisma.staffAttendance.findFirst({
     where: {
       id: attendanceId,
       staff: {
@@ -232,7 +232,7 @@ export const updateAttendance = async (
   attendanceId,
   data
 ) => {
-  const existingAttendance = await prisma.attendance.findFirst({
+  const existingAttendance = await prisma.staffAttendance.findFirst({
     where: {
       id: attendanceId,
       staff: {
@@ -279,7 +279,7 @@ export const updateAttendance = async (
     updateData.attendanceDate = date;
   }
 
-  const attendance = await prisma.attendance.update({
+  const attendance = await prisma.staffAttendance.update({
     where: {
       id: attendanceId,
     },
@@ -308,7 +308,7 @@ export const deleteAttendance = async (
   adminId,
   attendanceId
 ) => {
-  const existingAttendance = await prisma.attendance.findFirst({
+  const existingAttendance = await prisma.staffAttendance.findFirst({
     where: {
       id: attendanceId,
       staff: {
@@ -321,7 +321,7 @@ export const deleteAttendance = async (
     throw new Error("Attendance not found");
   }
 
-  await prisma.attendance.delete({
+  await prisma.staffAttendance.delete({
     where: {
       id: attendanceId,
     },
@@ -397,7 +397,7 @@ export const getStaffAttendance = async (
   }
 
   const [attendance, total] = await prisma.$transaction([
-    prisma.attendance.findMany({
+    prisma.staffAttendance.findMany({
       where,
       skip,
       take: limitNumber,
@@ -406,7 +406,7 @@ export const getStaffAttendance = async (
       },
     }),
 
-    prisma.attendance.count({
+    prisma.staffAttendance.count({
       where,
     }),
   ]);
@@ -471,7 +471,7 @@ export const getAttendanceSummary = async (
     }
   }
 
-  const records = await prisma.attendance.findMany({
+  const records = await prisma.staffAttendance.findMany({
     where,
     select: {
       status: true,

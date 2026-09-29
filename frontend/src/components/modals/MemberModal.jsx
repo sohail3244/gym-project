@@ -45,7 +45,10 @@ export default function MemberModal({
   if (!isOpen) return null;
 
   const handleBackdropClick = (event) => {
-    if (event.target === event.currentTarget && !isLoading) {
+    if (
+      event.target === event.currentTarget &&
+      !isLoading
+    ) {
       onClose?.();
     }
   };
@@ -61,7 +64,7 @@ export default function MemberModal({
     >
       <div
         className="
-          flex w-full max-w-3xl
+          flex w-full max-w-4xl
           max-h-[90vh]
           flex-col
           overflow-hidden
@@ -76,21 +79,29 @@ export default function MemberModal({
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
               {isEditMode ? (
-                <Pencil size={20} className="text-primary" />
+                <Pencil
+                  size={20}
+                  className="text-primary"
+                />
               ) : (
-                <UserPlus size={20} className="text-primary" />
+                <UserPlus
+                  size={20}
+                  className="text-primary"
+                />
               )}
             </div>
 
             <div>
               <h2 className="text-lg font-semibold text-foreground">
-                {isEditMode ? "Edit Member" : "Add New Member"}
+                {isEditMode
+                  ? "Edit Member"
+                  : "Add New Member"}
               </h2>
 
               <p className="text-xs text-muted-foreground">
                 {isEditMode
                   ? "Update member information"
-                  : "Add a new gym member"}
+                  : "Add member, membership and payment"}
               </p>
             </div>
           </div>

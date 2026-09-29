@@ -50,7 +50,7 @@ app.use("/api/v1/plans", planRoutes);
 app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/subscriptions", subscriptionRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
-app.use("/api/v1", adminProfileRoutes);
+app.use("/api/v1/profile", adminProfileRoutes);
 app.use("/api/v1/members", memberRoutes);
 app.use("/api/v1/membership-plans", membershipPlanRoutes);
 app.use("/api/v1/member-payments", memberPaymentRoutes);
