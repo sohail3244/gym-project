@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useMemo } from "react";
@@ -14,11 +15,7 @@ const MemberForm = ({
 }) => {
   const isEditMode = mode === "edit";
 
-  /*
-   * ---------------------------------------------------------
-   * MEMBERSHIP PLANS
-   * ---------------------------------------------------------
-   */
+  // Membership plans
   const {
     data: membershipPlansResponse,
     isLoading: isMembershipPlansLoading,
@@ -27,22 +24,12 @@ const MemberForm = ({
     status: "ACTIVE",
   });
 
-  /*
-   * ---------------------------------------------------------
-   * NORMALIZE MEMBERSHIP PLAN RESPONSE
-   * ---------------------------------------------------------
-   */
+  // Normalize membership-plan response
   const membershipPlans = useMemo(() => {
     const data = membershipPlansResponse?.data;
 
-    if (Array.isArray(data)) {
-      return data;
-    }
-
-    if (Array.isArray(data?.plans)) {
-      return data.plans;
-    }
-
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.plans)) return data.plans;
     if (Array.isArray(membershipPlansResponse?.plans)) {
       return membershipPlansResponse.plans;
     }
@@ -50,16 +37,13 @@ const MemberForm = ({
     return [];
   }, [membershipPlansResponse]);
 
-  /*
-   * ---------------------------------------------------------
-   * FORM
-   * ---------------------------------------------------------
-   */
   const {
     register,
     handleSubmit,
     watch,
     reset,
+    clearErrors,
+    trigger,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -72,17 +56,13 @@ const MemberForm = ({
       city: "",
       state: "",
       pincode: "",
-
       membershipPlanId: "",
       paymentMethod: "",
+      transactionId: "",
     },
   });
 
-  /*
-   * ---------------------------------------------------------
-   * RESET FORM FOR EDIT
-   * ---------------------------------------------------------
-   */
+  // Reset form when editing or opening a new form
   useEffect(() => {
     if (isEditMode && initialData) {
       reset({
@@ -99,13 +79,11 @@ const MemberForm = ({
         city: initialData.city || "",
         state: initialData.state || "",
         pincode: initialData.pincode || "",
-
         membershipPlanId: "",
         paymentMethod: "",
+        transactionId: "",
       });
-    }
-
-    if (!isEditMode && !initialData) {
+    } else if (!isEditMode && !initialData) {
       reset({
         name: "",
         mobileNumber: "",
@@ -116,35 +94,37 @@ const MemberForm = ({
         city: "",
         state: "",
         pincode: "",
-
         membershipPlanId: "",
         paymentMethod: "",
+        transactionId: "",
       });
     }
   }, [isEditMode, initialData, reset]);
 
-  /*
-   * ---------------------------------------------------------
-   * WATCH MEMBERSHIP PLAN
-   * ---------------------------------------------------------
-   */
+  // Watched values
   const selectedPlanId = watch("membershipPlanId");
+  const selectedPaymentMethod = watch("paymentMethod");
 
-  const selectedPlan = useMemo(() => {
-    return membershipPlans.find(
-      (plan) => plan.id === selectedPlanId
-    );
-  }, [membershipPlans, selectedPlanId]);
+  const selectedPlan = useMemo(
+    () =>
+      membershipPlans.find(
+        (plan) => plan.id === selectedPlanId
+      ),
+    [membershipPlans, selectedPlanId]
+  );
 
-  /*
-   * ---------------------------------------------------------
-   * FORM SUBMIT
-   * ---------------------------------------------------------
-   */
+  // If method changes to CASH, clear transaction-ID validation errors.
+  useEffect(() => {
+    if (selectedPaymentMethod === "CASH") {
+      clearErrors("transactionId");
+    } else if (selectedPaymentMethod) {
+      trigger("transactionId");
+    }
+  }, [selectedPaymentMethod, clearErrors, trigger]);
+
+  // Form submission
   const submitHandler = async (data) => {
-    /*
-     * EDIT MEMBER
-     */
+    // Edit member
     if (isEditMode) {
       const payload = {
         name: data.name.trim(),
@@ -158,18 +138,24 @@ const MemberForm = ({
         pincode: data.pincode?.trim() || null,
       };
 
+      console.log("MEMBER CREATE PAYLOAD:", payload);
+console.log("PAYMENT METHOD:", payload.payment?.paymentMethod);
+console.log("TRANSACTION ID:", payload.payment?.transactionId);
+
       await onSubmit?.(payload);
       return;
     }
 
-    /*
-     * CREATE MEMBER
-     */
-    if (!data.membershipPlanId) {
+    // Create member: require membership plan and payment method.
+    if (!data.membershipPlanId || !data.paymentMethod) {
       return;
     }
 
-    if (!data.paymentMethod) {
+    const isCash = data.paymentMethod === "CASH";
+    const transactionId = data.transactionId?.trim() || "";
+
+    // Client-side safeguard for non-cash payments.
+    if (!isCash && !transactionId) {
       return;
     }
 
@@ -191,69 +177,52 @@ const MemberForm = ({
           ? Number(selectedPlan.price)
           : 0,
         paymentMethod: data.paymentMethod,
+        transactionId: isCash ? null : transactionId,
       },
     };
+
+    console.log("MEMBER CREATE PAYLOAD:", payload);
+console.log("PAYMENT METHOD:", payload.payment?.paymentMethod);
+console.log("TRANSACTION ID:", payload.payment?.transactionId);
 
     await onSubmit?.(payload);
   };
 
-  /*
-   * ---------------------------------------------------------
-   * INPUT CLASS
-   * ---------------------------------------------------------
-   */
   const inputClass = `
-    w-full
-    rounded-lg
-    border
-    border-border
-    bg-background
-    px-3
-    py-2.5
-    text-sm
-    text-foreground
-    outline-none
-    transition
-    placeholder:text-muted-foreground
-    focus:border-primary
-    focus:ring-2
-    focus:ring-primary/10
-    disabled:cursor-not-allowed
-    disabled:opacity-60
+    w-full rounded-lg border border-border bg-background
+    px-3 py-2.5 text-sm text-foreground outline-none transition
+    placeholder:text-muted-foreground focus:border-primary
+    focus:ring-2 focus:ring-primary/10
+    disabled:cursor-not-allowed disabled:opacity-60
   `;
 
   const labelClass =
     "mb-1.5 block text-sm font-medium text-foreground";
 
-  const errorClass =
-    "mt-1 text-xs text-red-500";
+  const errorClass = "mt-1 text-xs text-red-500";
 
   return (
     <form
       onSubmit={handleSubmit(submitHandler)}
       className="space-y-6"
     >
-      {/* =====================================================
-          PERSONAL INFORMATION
-      ====================================================== */}
+      {/* PERSONAL INFORMATION */}
       <div>
         <div className="mb-4">
           <h3 className="text-base font-semibold text-foreground">
             Personal Information
           </h3>
-
           <p className="mt-1 text-xs text-muted-foreground">
-            Enter the member's basic information.
+            Enter the member&apos;s basic information.
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {/* NAME */}
+          {/* Name */}
           <div>
             <label className={labelClass}>
               Full Name <span className="text-red-500">*</span>
             </label>
-
             <input
               type="text"
               placeholder="Enter member name"
@@ -266,7 +235,6 @@ const MemberForm = ({
               })}
               className={inputClass}
             />
-
             {errors.name && (
               <p className={errorClass}>
                 {errors.name.message}
@@ -274,13 +242,11 @@ const MemberForm = ({
             )}
           </div>
 
-          {/* MOBILE */}
+          {/* Mobile */}
           <div>
             <label className={labelClass}>
-              Mobile Number{" "}
-              <span className="text-red-500">*</span>
+              Mobile Number <span className="text-red-500">*</span>
             </label>
-
             <input
               type="tel"
               placeholder="Enter mobile number"
@@ -290,13 +256,11 @@ const MemberForm = ({
                 required: "Mobile number is required",
                 pattern: {
                   value: /^[0-9]{10}$/,
-                  message:
-                    "Enter a valid 10-digit mobile number",
+                  message: "Enter a valid 10-digit mobile number",
                 },
               })}
               className={inputClass}
             />
-
             {errors.mobileNumber && (
               <p className={errorClass}>
                 {errors.mobileNumber.message}
@@ -304,26 +268,21 @@ const MemberForm = ({
             )}
           </div>
 
-          {/* EMAIL */}
+          {/* Email */}
           <div>
-            <label className={labelClass}>
-              Email
-            </label>
-
+            <label className={labelClass}>Email</label>
             <input
               type="email"
               placeholder="Enter email address"
               disabled={isLoading}
               {...register("email", {
                 pattern: {
-                  value:
-                    /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
                   message: "Enter a valid email address",
                 },
               })}
               className={inputClass}
             />
-
             {errors.email && (
               <p className={errorClass}>
                 {errors.email.message}
@@ -331,12 +290,9 @@ const MemberForm = ({
             )}
           </div>
 
-          {/* GENDER */}
+          {/* Gender */}
           <div>
-            <label className={labelClass}>
-              Gender
-            </label>
-
+            <label className={labelClass}>Gender</label>
             <select
               disabled={isLoading}
               {...register("gender")}
@@ -349,12 +305,9 @@ const MemberForm = ({
             </select>
           </div>
 
-          {/* DATE OF BIRTH */}
+          {/* Date of birth */}
           <div>
-            <label className={labelClass}>
-              Date of Birth
-            </label>
-
+            <label className={labelClass}>Date of Birth</label>
             <input
               type="date"
               disabled={isLoading}
@@ -365,27 +318,21 @@ const MemberForm = ({
         </div>
       </div>
 
-      {/* =====================================================
-          ADDRESS INFORMATION
-      ====================================================== */}
+      {/* ADDRESS INFORMATION */}
       <div>
         <div className="mb-4">
           <h3 className="text-base font-semibold text-foreground">
             Address Information
           </h3>
-
           <p className="mt-1 text-xs text-muted-foreground">
-            Enter the member's address details.
+            Enter the member&apos;s address details.
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {/* ADDRESS */}
+          {/* Address */}
           <div className="md:col-span-2">
-            <label className={labelClass}>
-              Address
-            </label>
-
+            <label className={labelClass}>Address</label>
             <textarea
               rows={3}
               placeholder="Enter full address"
@@ -395,12 +342,9 @@ const MemberForm = ({
             />
           </div>
 
-          {/* CITY */}
+          {/* City */}
           <div>
-            <label className={labelClass}>
-              City
-            </label>
-
+            <label className={labelClass}>City</label>
             <input
               type="text"
               placeholder="Enter city"
@@ -410,12 +354,9 @@ const MemberForm = ({
             />
           </div>
 
-          {/* STATE */}
+          {/* State */}
           <div>
-            <label className={labelClass}>
-              State
-            </label>
-
+            <label className={labelClass}>State</label>
             <input
               type="text"
               placeholder="Enter state"
@@ -425,12 +366,9 @@ const MemberForm = ({
             />
           </div>
 
-          {/* PINCODE */}
+          {/* Pincode */}
           <div>
-            <label className={labelClass}>
-              Pincode
-            </label>
-
+            <label className={labelClass}>Pincode</label>
             <input
               type="text"
               inputMode="numeric"
@@ -445,7 +383,6 @@ const MemberForm = ({
               })}
               className={inputClass}
             />
-
             {errors.pincode && (
               <p className={errorClass}>
                 {errors.pincode.message}
@@ -455,23 +392,20 @@ const MemberForm = ({
         </div>
       </div>
 
-      {/* =====================================================
-          MEMBERSHIP & PAYMENT
-      ====================================================== */}
+      {/* MEMBERSHIP & PAYMENT */}
       {!isEditMode && (
         <div>
           <div className="mb-4">
             <h3 className="text-base font-semibold text-foreground">
               Membership & Payment
             </h3>
-
             <p className="mt-1 text-xs text-muted-foreground">
               Select a membership plan and record the payment.
             </p>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {/* MEMBERSHIP PLAN */}
+            {/* Membership plan */}
             <div>
               <label className={labelClass}>
                 Membership Plan{" "}
@@ -479,13 +413,9 @@ const MemberForm = ({
               </label>
 
               <select
-                disabled={
-                  isLoading ||
-                  isMembershipPlansLoading
-                }
+                disabled={isLoading || isMembershipPlansLoading}
                 {...register("membershipPlanId", {
-                  required:
-                    "Membership plan is required",
+                  required: "Membership plan is required",
                 })}
                 className={inputClass}
               >
@@ -496,10 +426,7 @@ const MemberForm = ({
                 </option>
 
                 {membershipPlans.map((plan) => (
-                  <option
-                    key={plan.id}
-                    value={plan.id}
-                  >
+                  <option key={plan.id} value={plan.id}>
                     {plan.name} - ₹
                     {Number(plan.price).toFixed(2)}
                   </option>
@@ -527,7 +454,7 @@ const MemberForm = ({
                 )}
             </div>
 
-            {/* PAYMENT METHOD */}
+            {/* Payment method */}
             <div>
               <label className={labelClass}>
                 Payment Method{" "}
@@ -537,34 +464,16 @@ const MemberForm = ({
               <select
                 disabled={isLoading}
                 {...register("paymentMethod", {
-                  required:
-                    "Payment method is required",
+                  required: "Payment method is required",
                 })}
                 className={inputClass}
               >
-                <option value="">
-                  Select payment method
-                </option>
-
-                <option value="CASH">
-                  Cash
-                </option>
-
-                <option value="UPI">
-                  UPI
-                </option>
-
-                <option value="CARD">
-                  Card
-                </option>
-
-                <option value="BANK_TRANSFER">
-                  Bank Transfer
-                </option>
-
-                <option value="ONLINE">
-                  Online
-                </option>
+                <option value="">Select payment method</option>
+                <option value="CASH">Cash</option>
+                <option value="UPI">UPI</option>
+                <option value="CARD">Card</option>
+                <option value="BANK_TRANSFER">Bank Transfer</option>
+                <option value="ONLINE">Online</option>
               </select>
 
               {errors.paymentMethod && (
@@ -574,35 +483,66 @@ const MemberForm = ({
               )}
             </div>
 
-            {/* PLAN PRICE */}
-            <div>
-              <label className={labelClass}>
-                Payment Amount
-              </label>
+            {/* Transaction ID: required for all non-cash methods */}
+            {selectedPaymentMethod &&
+              selectedPaymentMethod !== "CASH" && (
+                <div>
+                  <label className={labelClass}>
+                    Transaction ID{" "}
+                    <span className="text-red-500">*</span>
+                  </label>
 
+                  <input
+                    type="text"
+                    placeholder="Enter transaction / reference ID"
+                    disabled={isLoading}
+                    {...register("transactionId", {
+                      validate: (value) => {
+                        if (selectedPaymentMethod === "CASH") {
+                          return true;
+                        }
+
+                        return (
+                          Boolean(value?.trim()) ||
+                          "Transaction ID is required for non-cash payments"
+                        );
+                      },
+                    })}
+                    className={inputClass}
+                  />
+
+                  {errors.transactionId && (
+                    <p className={errorClass}>
+                      {errors.transactionId.message}
+                    </p>
+                  )}
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Enter the transaction reference from the
+                    payment app, bank or payment provider.
+                  </p>
+                </div>
+              )}
+
+            {/* Payment amount */}
+            <div>
+              <label className={labelClass}>Payment Amount</label>
               <div
                 className={`${inputClass} flex items-center bg-muted`}
               >
-                ₹
+                ₹{" "}
                 {selectedPlan
-                  ? Number(
-                      selectedPlan.price
-                    ).toFixed(2)
+                  ? Number(selectedPlan.price).toFixed(2)
                   : "0.00"}
               </div>
-
               <p className="mt-1 text-xs text-muted-foreground">
-                Amount is automatically taken from
-                the selected membership plan.
+                Amount is taken from the selected membership plan.
               </p>
             </div>
 
-            {/* PLAN DURATION */}
+            {/* Plan duration */}
             <div>
-              <label className={labelClass}>
-                Plan Duration
-              </label>
-
+              <label className={labelClass}>Plan Duration</label>
               <div
                 className={`${inputClass} flex items-center bg-muted`}
               >
@@ -612,25 +552,13 @@ const MemberForm = ({
               </div>
             </div>
 
-            {/* PLAN DESCRIPTION */}
+            {/* Plan description */}
             {selectedPlan?.description && (
               <div className="md:col-span-2">
                 <label className={labelClass}>
                   Plan Description
                 </label>
-
-                <div
-                  className="
-                    rounded-lg
-                    border
-                    border-border
-                    bg-muted
-                    px-3
-                    py-2.5
-                    text-sm
-                    text-muted-foreground
-                  "
-                >
+                <div className="rounded-lg border border-border bg-muted px-3 py-2.5 text-sm text-muted-foreground">
                   {selectedPlan.description}
                 </div>
               </div>
@@ -639,28 +567,13 @@ const MemberForm = ({
         </div>
       )}
 
-      {/* =====================================================
-          ACTION BUTTONS
-      ====================================================== */}
+      {/* ACTION BUTTONS */}
       <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
         <button
           type="button"
           onClick={onClose}
           disabled={isLoading}
-          className="
-            rounded-lg
-            border
-            border-border
-            px-5
-            py-2.5
-            text-sm
-            font-medium
-            text-foreground
-            transition
-            hover:bg-secondary
-            disabled:cursor-not-allowed
-            disabled:opacity-50
-          "
+          className="rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-foreground transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
         >
           Cancel
         </button>
@@ -669,37 +582,15 @@ const MemberForm = ({
           type="submit"
           disabled={
             isLoading ||
-            (!isEditMode &&
-              isMembershipPlansLoading)
+            (!isEditMode && isMembershipPlansLoading)
           }
-          className="
-            flex
-            items-center
-            justify-center
-            gap-2
-            rounded-lg
-            bg-primary
-            px-5
-            py-2.5
-            text-sm
-            font-medium
-            text-primary-foreground
-            transition
-            hover:bg-primary/90
-            disabled:cursor-not-allowed
-            disabled:opacity-50
-          "
+          className="flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLoading && (
-            <Loader2
-              size={16}
-              className="animate-spin"
-            />
+            <Loader2 size={16} className="animate-spin" />
           )}
 
-          {isEditMode
-            ? "Update Member"
-            : "Create Member"}
+          {isEditMode ? "Update Member" : "Create Member"}
         </button>
       </div>
     </form>

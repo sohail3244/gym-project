@@ -1,79 +1,152 @@
+
 import prisma from "../prisma/prisma.js";
 
-const getDashboard = async (adminId) => {
-  const admin = await prisma.user.findUnique({
-    where: {
-      id: adminId,
-    },
-    include: {
+/**
+ * Dashboard access:
+ * SUPER_ADMIN = all gym data
+ * ADMIN       = only their own gym data
+ */
+const getDashboardAccess = async (userId) => {
+  if (!userId) {
+    const error = new Error("User ID is required");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      email: true,
+      role: true,
+      status: true,
       business: true,
     },
   });
 
-  if (!admin) {
-    throw new Error("Admin not found");
+  if (!user) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
   }
 
-  if (admin.role !== "ADMIN") {
-    throw new Error("Only Admin can access dashboard");
+  if (!["SUPER_ADMIN", "ADMIN"].includes(user.role)) {
+    const error = new Error(
+      "You are not authorized to access dashboard"
+    );
+    error.statusCode = 403;
+    throw error;
   }
 
+  const isSuperAdmin = user.role === "SUPER_ADMIN";
+
+  return {
+    user,
+    isSuperAdmin,
+    scope: isSuperAdmin ? "ALL" : "OWN",
+
+    // Gym data models use adminId, not userId.
+    adminFilter: isSuperAdmin ? {} : { adminId: user.id },
+
+    // Attendance is scoped through its staff relation.
+    attendanceFilter: isSuperAdmin
+      ? {}
+      : { staff: { adminId: user.id } },
+  };
+};
+
+const toNumber = (value) => Number(value ?? 0);
+
+/**
+ * Common gym dashboard data used by all dashboard endpoints.
+ */
+const getGymDashboardData = async (adminFilter, attendanceFilter) => {
   const [
-    activeSubscriptions,
-    pendingSubscriptions,
-    expiredSubscriptions,
-    cancelledSubscriptions,
-    paymentStats,
-    recentPayments,
-    currentSubscription,
+    totalMembers,
+    activeMembers,
+    totalMembershipPlans,
+    activeMembershipPlans,
+    totalMemberPayments,
+    successfulMemberPayments,
+    pendingMemberPayments,
+    failedMemberPayments,
+    totalStaff,
+    activeStaff,
+    totalStaffAttendance,
+    recentMembers,
+    recentMemberPayments,
+    recentStaff,
+    recentStaffAttendance,
   ] = await Promise.all([
-    prisma.subscription.count({
-      where: {
-        userId: adminId,
-        status: "ACTIVE",
-      },
+    prisma.member.count({
+      where: adminFilter,
     }),
 
-    prisma.subscription.count({
-      where: {
-        userId: adminId,
-        status: "PENDING",
-      },
+    prisma.member.count({
+      where: { ...adminFilter, status: "ACTIVE" },
     }),
 
-    prisma.subscription.count({
-      where: {
-        userId: adminId,
-        status: "EXPIRED",
-      },
+    prisma.membershipPlan.count({
+      where: adminFilter,
     }),
 
-    prisma.subscription.count({
-      where: {
-        userId: adminId,
-        status: "CANCELLED",
-      },
+    prisma.membershipPlan.count({
+      where: { ...adminFilter, status: "ACTIVE" },
     }),
 
-    prisma.payment.aggregate({
-      where: {
-        userId: adminId,
-      },
-      _sum: {
-        amount: true,
-      },
-      _count: {
+    prisma.memberPayment.count({
+      where: adminFilter,
+    }),
+
+    prisma.memberPayment.aggregate({
+      where: { ...adminFilter, status: "SUCCESS" },
+      _count: { id: true },
+      _sum: { amount: true },
+    }),
+
+    prisma.memberPayment.aggregate({
+      where: { ...adminFilter, status: "PENDING" },
+      _count: { id: true },
+      _sum: { amount: true },
+    }),
+
+    prisma.memberPayment.aggregate({
+      where: { ...adminFilter, status: "FAILED" },
+      _count: { id: true },
+      _sum: { amount: true },
+    }),
+
+    prisma.staff.count({
+      where: adminFilter,
+    }),
+
+    prisma.staff.count({
+      where: { ...adminFilter, status: "ACTIVE" },
+    }),
+
+    prisma.staffAttendance.count({
+      where: attendanceFilter,
+    }),
+
+    prisma.member.findMany({
+      where: adminFilter,
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: {
         id: true,
+        name: true,
+        mobileNumber: true,
+        email: true,
+        status: true,
+        createdAt: true,
       },
     }),
 
-    prisma.payment.findMany({
-      where: {
-        userId: adminId,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+    prisma.memberPayment.findMany({
+      where: adminFilter,
+      orderBy: { createdAt: "desc" },
       take: 10,
       select: {
         id: true,
@@ -82,323 +155,197 @@ const getDashboard = async (adminId) => {
         paymentMethod: true,
         status: true,
         transactionId: true,
-        gatewayOrderId: true,
         paidAt: true,
         createdAt: true,
-        subscription: {
-          select: {
-            id: true,
-            status: true,
-            startDate: true,
-            endDate: true,
-            plan: {
-              select: {
-                id: true,
-                name: true,
-                price: true,
-                billingInterval: true,
-              },
-            },
-          },
-        },
-      },
-    }),
-
-    prisma.subscription.findFirst({
-      where: {
-        userId: adminId,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      select: {
-        id: true,
-        status: true,
-        startDate: true,
-        endDate: true,
-        autoRenew: true,
-        createdAt: true,
-        plan: {
+        member: {
           select: {
             id: true,
             name: true,
-            description: true,
-            price: true,
-            billingInterval: true,
-            durationInDays: true,
-            maxMembers: true,
-            maxStaff: true,
-            maxBusinesses: true,
-            features: true,
+            mobileNumber: true,
+          },
+        },
+      },
+    }),
+
+    prisma.staff.findMany({
+      where: adminFilter,
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: {
+        id: true,
+        name: true,
+        mobileNumber: true,
+        staffType: true,
+        designation: true,
+        status: true,
+        createdAt: true,
+      },
+    }),
+
+    prisma.staffAttendance.findMany({
+      where: attendanceFilter,
+      orderBy: { attendanceDate: "desc" },
+      take: 10,
+      select: {
+        id: true,
+        attendanceDate: true,
+        checkIn: true,
+        checkOut: true,
+        status: true,
+        notes: true,
+        staff: {
+          select: {
+            id: true,
+            name: true,
+            staffType: true,
+            designation: true,
           },
         },
       },
     }),
   ]);
 
-  const successfulPayments = await prisma.payment.aggregate({
-    where: {
-      userId: adminId,
-      status: "SUCCESS",
-    },
-    _sum: {
-      amount: true,
-    },
-    _count: {
-      id: true,
-    },
-  });
-
-  const pendingPayments = await prisma.payment.aggregate({
-    where: {
-      userId: adminId,
-      status: "PENDING",
-    },
-    _sum: {
-      amount: true,
-    },
-    _count: {
-      id: true,
-    },
-  });
-
-  const failedPayments = await prisma.payment.aggregate({
-    where: {
-      userId: adminId,
-      status: "FAILED",
-    },
-    _sum: {
-      amount: true,
-    },
-    _count: {
-      id: true,
-    },
-  });
-
   return {
-    admin: {
-      id: admin.id,
-      name: admin.name,
-      username: admin.username,
-      email: admin.email,
-      status: admin.status,
-    },
-
-    business: admin.business
-      ? {
-          id: admin.business.id,
-          businessName: admin.business.businessName,
-          businessType: admin.business.businessType,
-          mobileNumber: admin.business.mobileNumber,
-          email: admin.business.email,
-          address: admin.business.address,
-          city: admin.business.city,
-          state: admin.business.state,
-          pincode: admin.business.pincode,
-        }
-      : null,
-
-    stats: {
-      activeSubscriptions,
-      pendingSubscriptions,
-      expiredSubscriptions,
-      cancelledSubscriptions,
-
-      totalPayments: paymentStats._count.id,
-
-      totalPaymentAmount: Number(
-        paymentStats._sum.amount || 0
-      ),
-
-      successfulPayments: successfulPayments._count.id,
-
-      successfulPaymentAmount: Number(
-        successfulPayments._sum.amount || 0
-      ),
-
-      pendingPayments: pendingPayments._count.id,
-
-      pendingPaymentAmount: Number(
-        pendingPayments._sum.amount || 0
-      ),
-
-      failedPayments: failedPayments._count.id,
-
-      failedPaymentAmount: Number(
-        failedPayments._sum.amount || 0
-      ),
-    },
-
-    currentSubscription,
-
-    recentPayments: recentPayments.map((payment) => ({
-      ...payment,
-      amount: Number(payment.amount),
-      subscription: payment.subscription
-        ? {
-            ...payment.subscription,
-            plan: payment.subscription.plan
-              ? {
-                  ...payment.subscription.plan,
-                  price: Number(payment.subscription.plan.price),
-                }
-              : null,
-          }
-        : null,
-    })),
-  };
-};
-
-const getDashboardStats = async (adminId) => {
-  const admin = await prisma.user.findUnique({
-    where: {
-      id: adminId,
-      role: "ADMIN",
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  if (!admin) {
-    throw new Error("Admin not found");
-  }
-
-  const [
-    activeSubscriptions,
-    pendingSubscriptions,
-    expiredSubscriptions,
-    cancelledSubscriptions,
-    totalPayments,
-    successfulPayments,
-    pendingPayments,
-    failedPayments,
-  ] = await Promise.all([
-    prisma.subscription.count({
-      where: {
-        userId: adminId,
-        status: "ACTIVE",
-      },
-    }),
-
-    prisma.subscription.count({
-      where: {
-        userId: adminId,
-        status: "PENDING",
-      },
-    }),
-
-    prisma.subscription.count({
-      where: {
-        userId: adminId,
-        status: "EXPIRED",
-      },
-    }),
-
-    prisma.subscription.count({
-      where: {
-        userId: adminId,
-        status: "CANCELLED",
-      },
-    }),
-
-    prisma.payment.count({
-      where: {
-        userId: adminId,
-      },
-    }),
-
-    prisma.payment.aggregate({
-      where: {
-        userId: adminId,
-        status: "SUCCESS",
-      },
-      _count: {
-        id: true,
-      },
-      _sum: {
-        amount: true,
-      },
-    }),
-
-    prisma.payment.aggregate({
-      where: {
-        userId: adminId,
-        status: "PENDING",
-      },
-      _count: {
-        id: true,
-      },
-      _sum: {
-        amount: true,
-      },
-    }),
-
-    prisma.payment.aggregate({
-      where: {
-        userId: adminId,
-        status: "FAILED",
-      },
-      _count: {
-        id: true,
-      },
-      _sum: {
-        amount: true,
-      },
-    }),
-  ]);
-
-  return {
-    subscriptions: {
-      active: activeSubscriptions,
-      pending: pendingSubscriptions,
-      expired: expiredSubscriptions,
-      cancelled: cancelledSubscriptions,
+    counts: {
+      totalMembers,
+      activeMembers,
+      totalMembershipPlans,
+      activeMembershipPlans,
+      totalMemberPayments,
+      successfulMemberPayments: successfulMemberPayments._count.id,
+      pendingMemberPayments: pendingMemberPayments._count.id,
+      failedMemberPayments: failedMemberPayments._count.id,
+      totalStaff,
+      activeStaff,
+      totalStaffAttendance,
     },
 
     payments: {
-      total: totalPayments,
+      total: totalMemberPayments,
+      successful: successfulMemberPayments._count.id,
+      successfulAmount: toNumber(successfulMemberPayments._sum.amount),
+      pending: pendingMemberPayments._count.id,
+      pendingAmount: toNumber(pendingMemberPayments._sum.amount),
+      failed: failedMemberPayments._count.id,
+      failedAmount: toNumber(failedMemberPayments._sum.amount),
+    },
 
-      successful: successfulPayments._count.id,
-      successfulAmount: Number(
-        successfulPayments._sum.amount || 0
-      ),
+    recentMembers,
 
-      pending: pendingPayments._count.id,
-      pendingAmount: Number(
-        pendingPayments._sum.amount || 0
-      ),
+    recentMemberPayments: recentMemberPayments.map((payment) => ({
+      ...payment,
+      amount: toNumber(payment.amount),
+    })),
 
-      failed: failedPayments._count.id,
-      failedAmount: Number(
-        failedPayments._sum.amount || 0
-      ),
+    recentStaff,
+
+    recentStaffAttendance,
+  };
+};
+
+/**
+ * GET /dashboard
+ */
+const getDashboard = async (userId) => {
+  const {
+    user,
+    scope,
+    adminFilter,
+    attendanceFilter,
+  } = await getDashboardAccess(userId);
+
+  const gym = await getGymDashboardData(
+    adminFilter,
+    attendanceFilter
+  );
+
+  return {
+    scope,
+
+    user: {
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+    },
+
+    business: user.business,
+
+    stats: {
+      members: {
+        total: gym.counts.totalMembers,
+        active: gym.counts.activeMembers,
+      },
+
+      membershipPlans: {
+        total: gym.counts.totalMembershipPlans,
+        active: gym.counts.activeMembershipPlans,
+      },
+
+      memberPayments: gym.payments,
+
+      staff: {
+        total: gym.counts.totalStaff,
+        active: gym.counts.activeStaff,
+      },
+
+      staffAttendance: {
+        total: gym.counts.totalStaffAttendance,
+      },
+    },
+
+    gym,
+  };
+};
+
+/**
+ * GET /dashboard/stats
+ */
+const getDashboardStats = async (userId) => {
+  const { scope, adminFilter, attendanceFilter } =
+    await getDashboardAccess(userId);
+
+  const gym = await getGymDashboardData(
+    adminFilter,
+    attendanceFilter
+  );
+
+  return {
+    scope,
+    members: {
+      total: gym.counts.totalMembers,
+      active: gym.counts.activeMembers,
+    },
+
+    membershipPlans: {
+      total: gym.counts.totalMembershipPlans,
+      active: gym.counts.activeMembershipPlans,
+    },
+
+    payments: gym.payments,
+
+    staff: {
+      total: gym.counts.totalStaff,
+      active: gym.counts.activeStaff,
+    },
+
+    staffAttendance: {
+      total: gym.counts.totalStaffAttendance,
     },
   };
 };
 
-const getRecentPayments = async (adminId) => {
-  const admin = await prisma.user.findUnique({
-    where: {
-      id: adminId,
-      role: "ADMIN",
-    },
-    select: {
-      id: true,
-    },
-  });
+/**
+ * GET /dashboard/recent-payments
+ */
+const getRecentPayments = async (userId) => {
+  const { adminFilter } = await getDashboardAccess(userId);
 
-  if (!admin) {
-    throw new Error("Admin not found");
-  }
-
-  const payments = await prisma.payment.findMany({
-    where: {
-      userId: adminId,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
+  const payments = await prisma.memberPayment.findMany({
+    where: adminFilter,
+    orderBy: { createdAt: "desc" },
     take: 10,
     select: {
       id: true,
@@ -407,24 +354,13 @@ const getRecentPayments = async (adminId) => {
       paymentMethod: true,
       status: true,
       transactionId: true,
-      gatewayOrderId: true,
-      gatewayPaymentId: true,
       paidAt: true,
       createdAt: true,
-      subscription: {
+      member: {
         select: {
           id: true,
-          status: true,
-          startDate: true,
-          endDate: true,
-          plan: {
-            select: {
-              id: true,
-              name: true,
-              price: true,
-              billingInterval: true,
-            },
-          },
+          name: true,
+          mobileNumber: true,
         },
       },
     },
@@ -432,73 +368,79 @@ const getRecentPayments = async (adminId) => {
 
   return payments.map((payment) => ({
     ...payment,
-    amount: Number(payment.amount),
-    subscription: payment.subscription
-      ? {
-          ...payment.subscription,
-          plan: payment.subscription.plan
-            ? {
-                ...payment.subscription.plan,
-                price: Number(payment.subscription.plan.price),
-              }
-            : null,
-        }
-      : null,
+    amount: toNumber(payment.amount),
   }));
 };
 
-const getRecentSubscriptions = async (adminId) => {
-  const admin = await prisma.user.findUnique({
-    where: {
-      id: adminId,
-      role: "ADMIN",
-    },
-    select: {
-      id: true,
-    },
-  });
+/**
+ * GET /dashboard/recent-subscriptions
+ */
+const getRecentSubscriptions = async (userId) => {
+  const { adminFilter } = await getDashboardAccess(userId);
 
-  if (!admin) {
-    throw new Error("Admin not found");
-  }
-
-  return prisma.subscription.findMany({
-    where: {
-      userId: adminId,
-    },
+  const members = await prisma.member.findMany({
+    where: adminFilter,
     orderBy: {
       createdAt: "desc",
     },
     take: 10,
     select: {
       id: true,
-      startDate: true,
-      endDate: true,
+      name: true,
+      mobileNumber: true,
+      email: true,
       status: true,
-      autoRenew: true,
       createdAt: true,
-      plan: {
+
+      memberships: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 1,
         select: {
           id: true,
-          name: true,
-          description: true,
-          price: true,
-          billingInterval: true,
-          durationInDays: true,
+          membershipName: true,
+          amount: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          createdAt: true,
+
+          // Correct relation name from schema.prisma
+          membershipPlan: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              durationInDays: true,
+            },
+          },
         },
       },
     },
-  }).then((subscriptions) =>
-    subscriptions.map((subscription) => ({
-      ...subscription,
-      plan: subscription.plan
+  });
+
+  return members.map((member) => ({
+    ...member,
+
+    memberships: member.memberships.map((membership) => ({
+      ...membership,
+
+      amount: Number(membership.amount ?? 0),
+
+      // Keep "plan" for compatibility with the current frontend.
+      plan: membership.membershipPlan
         ? {
-            ...subscription.plan,
-            price: Number(subscription.plan.price),
+            ...membership.membershipPlan,
+            price: Number(membership.membershipPlan.price ?? 0),
           }
-        : null,
-    }))
-  );
+        : {
+            name: membership.membershipName,
+            price: Number(membership.amount ?? 0),
+            durationInDays: null,
+          },
+    })),
+  }));
 };
 
 export default {

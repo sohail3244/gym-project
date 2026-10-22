@@ -14,10 +14,8 @@ const STAFF_TYPES = [
 
 const DEFAULT_FORM = {
   name: "",
-  username: "",
   email: "",
   mobileNumber: "",
-  password: "",
   staffType: "TRAINER",
   designation: "",
   address: "",
@@ -40,10 +38,8 @@ export default function StaffForm({
     if (mode === "edit" && initialData) {
       setFormData({
         name: initialData.name || "",
-        username: initialData.username || "",
         email: initialData.email || "",
         mobileNumber: initialData.mobileNumber || "",
-        password: "",
         staffType: initialData.staffType || "TRAINER",
         designation: initialData.designation || "",
         address: initialData.address || "",
@@ -81,9 +77,7 @@ export default function StaffForm({
       newErrors.name = "Staff name is required";
     }
 
-    if (!formData.username.trim()) {
-      newErrors.username = "Username is required";
-    }
+    
 
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
@@ -99,17 +93,9 @@ export default function StaffForm({
       newErrors.mobileNumber = "Mobile number must be 10 digits";
     }
 
-    if (mode === "create" && !formData.password.trim()) {
-      newErrors.password = "Password is required";
-    }
+    
 
-    if (
-      mode === "create" &&
-      formData.password &&
-      formData.password.length < 6
-    ) {
-      newErrors.password = "Password must be at least 6 characters";
-    }
+    
 
     if (!formData.staffType) {
       newErrors.staffType = "Staff type is required";
@@ -134,10 +120,8 @@ export default function StaffForm({
 
     const payload = {
       name: formData.name.trim(),
-      username: formData.username.trim(),
       email: formData.email.trim(),
       mobileNumber: formData.mobileNumber.trim(),
-      password: formData.password,
       staffType: formData.staffType,
       designation: formData.designation.trim(),
       address: formData.address.trim(),
@@ -147,9 +131,7 @@ export default function StaffForm({
     };
 
     // Edit mode mein empty password send nahi karna
-    if (mode === "edit" && !payload.password) {
-      delete payload.password;
-    }
+    
 
     await onSubmit(payload);
   };
@@ -265,29 +247,6 @@ export default function StaffForm({
           )}
         </div>
 
-        {/* Username */}
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-foreground">
-            Username <span className="text-destructive">*</span>
-          </label>
-
-          <input
-            type="text"
-            name="username"
-            value={formData.username}
-            onChange={handleChange}
-            placeholder="rahul.trainer"
-            className={inputClass("username")}
-            disabled={isLoading}
-          />
-
-          {errors.username && (
-            <p className="mt-1 text-xs text-destructive">
-              {errors.username}
-            </p>
-          )}
-        </div>
-
         {/* Email */}
         <div>
           <label className="mb-1.5 block text-sm font-medium text-foreground">
@@ -311,35 +270,6 @@ export default function StaffForm({
           )}
         </div>
 
-        {/* Password */}
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-foreground">
-            Password{" "}
-            {mode === "create" && (
-              <span className="text-destructive">*</span>
-            )}
-          </label>
-
-          <input
-            type="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            placeholder={
-              mode === "edit"
-                ? "Leave blank to keep current password"
-                : "Rahul@12345"
-            }
-            className={inputClass("password")}
-            disabled={isLoading}
-          />
-
-          {errors.password && (
-            <p className="mt-1 text-xs text-destructive">
-              {errors.password}
-            </p>
-          )}
-        </div>
       </div>
 
       {/* Address */}

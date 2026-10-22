@@ -1,5 +1,27 @@
 import prisma from "../prisma/prisma.js";
 
+
+const generateUniqueUsername = async () => {
+  let username;
+  let existingStaff;
+
+  do {
+    const randomNumber = Math.floor(
+      100000 + Math.random() * 900000
+    );
+
+    username = `EMP-${randomNumber}`;
+
+    existingStaff = await prisma.staff.findUnique({
+      where: { username },
+      select: { id: true },
+    });
+  } while (existingStaff);
+
+  return username;
+};
+
+
 const createStaff = async (adminId, data) => {
   const {
     name,
@@ -47,6 +69,8 @@ const createStaff = async (adminId, data) => {
     throw new Error("Admin account is not active");
   }
 
+  const username = await generateUniqueUsername();
+
   const staff = await prisma.staff.create({
     data: {
       adminId,
@@ -59,7 +83,7 @@ const createStaff = async (adminId, data) => {
       city: city || null,
       state: state || null,
       pincode: pincode || null,
-      username: null,
+      username,
       passwordHash: null,
     },
     select: {
@@ -189,6 +213,7 @@ const getStaffById = async (adminId, staffId) => {
       id: true,
       adminId: true,
       name: true,
+      username: true,
       mobileNumber: true,
       email: true,
       staffType: true,

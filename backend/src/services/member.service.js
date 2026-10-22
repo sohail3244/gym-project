@@ -26,6 +26,7 @@ const verifyAdmin = async (adminId) => {
 const createMember = async (adminId, data) => {
   await verifyAdmin(adminId);
 
+
   const {
     name,
     mobileNumber,
@@ -40,13 +41,31 @@ const createMember = async (adminId, data) => {
     // Membership details
     membershipPlanId,
     startDate,
-
-    // Payment details
-    paymentMethod,
-    transactionId,
-    paymentNotes,
-    paidAt,
   } = data;
+
+  // Payment details: support nested and flat payloads
+  const paymentData = data.payment ?? {};
+
+  const paymentMethod =
+    paymentData.paymentMethod ?? data.paymentMethod ?? null;
+
+  const transactionId =
+    paymentData.transactionId ?? data.transactionId ?? null;
+
+  const paymentNotes =
+    paymentData.paymentNotes ??
+    paymentData.notes ??
+    data.paymentNotes ??
+    null;
+
+  const paidAt =
+    paymentData.paidAt ?? data.paidAt ?? null;
+
+  const normalizedTransactionId =
+    typeof transactionId === "string"
+      ? transactionId.trim() || null
+      : null;
+
 
   if (!name || !name.trim()) {
     throw new Error("Name is required");
@@ -115,6 +134,7 @@ const createMember = async (adminId, data) => {
   /*
    * Payment method validation
    */
+
   const validPaymentMethods = [
     "ONLINE",
     "CASH",
@@ -122,6 +142,23 @@ const createMember = async (adminId, data) => {
     "UPI",
     "CARD",
   ];
+
+  if (
+    !paymentMethod ||
+    !validPaymentMethods.includes(paymentMethod)
+  ) {
+    throw new Error("Valid payment method is required");
+  }
+
+  if (
+    paymentMethod !== "CASH" &&
+    !normalizedTransactionId
+  ) {
+    throw new Error(
+      "Transaction ID is required for non-cash payments"
+    );
+  }
+
 
   if (
     paymentMethod &&
@@ -133,20 +170,20 @@ const createMember = async (adminId, data) => {
   /*
    * Transaction ID duplicate check
    */
-  if (transactionId) {
+
+  if (normalizedTransactionId) {
     const existingPayment =
       await prisma.memberPayment.findUnique({
         where: {
-          transactionId: transactionId.trim(),
+          transactionId: normalizedTransactionId,
         },
       });
 
     if (existingPayment) {
-      throw new Error(
-        "Transaction ID already exists"
-      );
+      throw new Error("Transaction ID already exists");
     }
   }
+
 
   /*
    * Calculate membership dates
@@ -165,7 +202,7 @@ const createMember = async (adminId, data) => {
 
   membershipEndDate.setDate(
     membershipEndDate.getDate() +
-      membershipPlan.durationInDays
+    membershipPlan.durationInDays
   );
 
   /*
@@ -247,40 +284,27 @@ const createMember = async (adminId, data) => {
        * Payment amount automatically comes
        * from selected membership plan.
        */
-      const payment =
-        await tx.memberPayment.create({
-          data: {
-            adminId,
 
-            memberId:
-              member.id,
+      const payment = await tx.memberPayment.create({
+        data: {
+          adminId,
+          memberId: member.id,
+          membershipId: membership.id,
+          amount: membershipPlan.price,
+          currency: "INR",
 
-            membershipId:
-              membership.id,
+          paymentMethod,
+          transactionId:
+            paymentMethod === "CASH"
+              ? null
+              : normalizedTransactionId,
 
-            amount:
-              membershipPlan.price,
+          status: "SUCCESS",
+          notes: paymentNotes || null,
+          paidAt: paidAt ? new Date(paidAt) : new Date(),
+        },
+      });
 
-            currency: "INR",
-
-            paymentMethod:
-              paymentMethod || null,
-
-            status: "SUCCESS",
-
-            transactionId:
-              transactionId
-                ? transactionId.trim()
-                : null,
-
-            notes:
-              paymentNotes || null,
-
-            paidAt: paidAt
-              ? new Date(paidAt)
-              : new Date(),
-          },
-        });
 
       /*
        * 4. Return complete response

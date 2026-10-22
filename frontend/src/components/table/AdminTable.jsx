@@ -683,17 +683,11 @@ export default function AdminTable({
                           @{admin.username}
                         </p>
 
-                        {admin.email && (
-                          <p
-                            className="
-                              mt-0.5
-                              text-xs
-                              text-muted-foreground
-                            "
-                          >
-                            {admin.email}
-                          </p>
-                        )}
+                        <p className="mt-1 break-all text-xs text-muted-foreground">
+                          {admin.password || "-"}
+                        </p>
+
+
 
                       </div>
                     </TableCell>
@@ -730,11 +724,15 @@ export default function AdminTable({
 
                     {/* Mobile */}
                     <TableCell>
-                      <span className="whitespace-nowrap">
-                        {admin.business
-                          ?.mobileNumber ||
-                          "-"}
-                      </span>
+                      <div className="min-w-36">
+                        <p className="whitespace-nowrap text-sm text-foreground">
+                          {admin.business?.mobileNumber || "-"}
+                        </p>
+
+                        <p className="mt-1 break-all text-xs text-muted-foreground">
+                          {admin.email || admin.business?.email || "-"}
+                        </p>
+                      </div>
                     </TableCell>
 
                     {/* Plan */}

@@ -828,6 +828,7 @@ const getAllAdmins = async (
           id: true,
           name: true,
           username: true,
+          encryptedPassword: true,
           email: true,
           role: true,
           status: true,
@@ -891,8 +892,17 @@ const getAllAdmins = async (
       total / limit
     );
 
+  const adminsWithPassword = admins.map(
+    ({ encryptedPassword, ...admin }) => ({
+      ...admin,
+      password: encryptedPassword
+        ? decryptPassword(encryptedPassword)
+        : null,
+    })
+  );
+
   return {
-    admins,
+    admins: adminsWithPassword,
 
     pagination: {
       page,

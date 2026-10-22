@@ -1,108 +1,136 @@
+
 import DashboardService from "../services/dashboard.service.js";
 
+const getUserId = (req) => req.user?._id ?? req.user?.id;
+
+const handleError = (res, error, fallbackMessage) => {
+  console.error("Dashboard error:", error);
+
+  return res.status(error.statusCode || 500).json({
+    success: false,
+    message: error.statusCode
+      ? error.message
+      : fallbackMessage,
+  });
+};
+
+/**
+ * GET /dashboard
+ */
 export const getDashboard = async (req, res) => {
   try {
-    const result = await DashboardService.getDashboard(
-      req.user.id
-    );
+    const userId = getUserId(req);
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const data = await DashboardService.getDashboard(userId);
 
     return res.status(200).json({
       success: true,
       message: "Dashboard fetched successfully",
-      data: result,
+      data,
     });
   } catch (error) {
-    console.error("Get Dashboard Error:", error);
-
-    return res.status(400).json({
-      success: false,
-      message:
-        error.message || "Failed to fetch dashboard",
-    });
+    return handleError(
+      res,
+      error,
+      "Failed to fetch dashboard"
+    );
   }
 };
 
+/**
+ * GET /dashboard/stats
+ */
 export const getDashboardStats = async (req, res) => {
   try {
-    const result =
-      await DashboardService.getDashboardStats(
-        req.user.id
-      );
+    const userId = getUserId(req);
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const data = await DashboardService.getDashboardStats(userId);
 
     return res.status(200).json({
       success: true,
       message: "Dashboard stats fetched successfully",
-      data: result,
+      data,
     });
   } catch (error) {
-    console.error(
-      "Get Dashboard Stats Error:",
-      error
+    return handleError(
+      res,
+      error,
+      "Failed to fetch dashboard stats"
     );
-
-    return res.status(400).json({
-      success: false,
-      message:
-        error.message ||
-        "Failed to fetch dashboard stats",
-    });
   }
 };
 
+/**
+ * GET /dashboard/recent-payments
+ */
 export const getRecentPayments = async (req, res) => {
   try {
-    const result =
-      await DashboardService.getRecentPayments(
-        req.user.id
-      );
+    const userId = getUserId(req);
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const data = await DashboardService.getRecentPayments(userId);
 
     return res.status(200).json({
       success: true,
-      message: "Recent payments fetched successfully",
-      data: result,
+      message: "Recent member payments fetched successfully",
+      data,
     });
   } catch (error) {
-    console.error(
-      "Get Recent Payments Error:",
-      error
+    return handleError(
+      res,
+      error,
+      "Failed to fetch recent payments"
     );
-
-    return res.status(400).json({
-      success: false,
-      message:
-        error.message ||
-        "Failed to fetch recent payments",
-    });
   }
 };
 
-export const getRecentSubscriptions = async (
-  req,
-  res
-) => {
+/**
+ * GET /dashboard/recent-subscriptions
+ */
+export const getRecentSubscriptions = async (req, res) => {
   try {
-    const result =
-      await DashboardService.getRecentSubscriptions(
-        req.user.id
-      );
+    const userId = getUserId(req);
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const data =
+      await DashboardService.getRecentSubscriptions(userId);
 
     return res.status(200).json({
       success: true,
-      message:
-        "Recent subscriptions fetched successfully",
-      data: result,
+      message: "Recent memberships fetched successfully",
+      data,
     });
   } catch (error) {
-    console.error(
-      "Get Recent Subscriptions Error:",
-      error
+    return handleError(
+      res,
+      error,
+      "Failed to fetch recent memberships"
     );
-
-    return res.status(400).json({
-      success: false,
-      message:
-        error.message ||
-        "Failed to fetch recent subscriptions",
-    });
   }
 };

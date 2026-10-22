@@ -7,10 +7,7 @@ const roleMiddleware = (...allowedRoles) => {
       });
     }
 
-    console.log("ROLE CHECK");
-    console.log("User ID:", req.user.id);
-    console.log("User Role:", req.user.role);
-    console.log("Allowed Roles:", allowedRoles);
+    
 
     if (!allowedRoles.includes(req.user.role)) {
       console.log("ACCESS DENIED");

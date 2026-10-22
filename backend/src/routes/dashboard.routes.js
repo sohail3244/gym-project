@@ -1,3 +1,4 @@
+
 import express from "express";
 
 import {
@@ -12,32 +13,12 @@ import roleMiddleware from "../middleware/role.middleware.js";
 
 const router = express.Router();
 
-router.get(
-  "/",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  getDashboard
-);
+router.use(authMiddleware);
+router.use(roleMiddleware("SUPER_ADMIN", "ADMIN"));
 
-router.get(
-  "/stats",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  getDashboardStats
-);
-
-router.get(
-  "/recent-payments",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  getRecentPayments
-);
-
-router.get(
-  "/recent-subscriptions",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  getRecentSubscriptions
-);
+router.get("/", getDashboard);
+router.get("/stats", getDashboardStats);
+router.get("/recent-payments", getRecentPayments);
+router.get("/recent-subscriptions", getRecentSubscriptions);
 
 export default router;
